@@ -47,24 +47,34 @@ else:
     st.error("'Event Date' column missing or incorrectly named in CSV.")
     st.stop()
 
-# Sidebar Filters with default to all
+# Sidebar Filters with Clear Filters option
 all_franchisees = data['Franchisee'].dropna().unique()
 all_schools = data['School'].dropna().unique()
 all_years = data['Year'].dropna().unique()
 all_terms = data['Term'].dropna().unique()
 
-franchisee = st.sidebar.multiselect("Select Franchisee", options=all_franchisees, default=list(all_franchisees))
-school = st.sidebar.multiselect("Select School", options=all_schools, default=list(all_schools))
-year = st.sidebar.multiselect("Select Year", options=all_years, default=list(all_years))
-term = st.sidebar.multiselect("Select Term", options=all_terms, default=list(all_terms))
+franchisee = st.sidebar.multiselect("Select Franchisee", options=all_franchisees)
+school = st.sidebar.multiselect("Select School", options=all_schools)
+year = st.sidebar.multiselect("Select Year", options=all_years)
+term = st.sidebar.multiselect("Select Term", options=all_terms)
+
+# Clear filters button
+if st.sidebar.button("Clear All Filters"):
+    franchisee.clear()
+    school.clear()
+    year.clear()
+    term.clear()
 
 # Filter data
-filtered_data = data[
-    data['Franchisee'].isin(franchisee) &
-    data['School'].isin(school) &
-    data['Year'].isin(year) &
-    data['Term'].isin(term)
-]
+filtered_data = data.copy()
+if franchisee:
+    filtered_data = filtered_data[filtered_data['Franchisee'].isin(franchisee)]
+if school:
+    filtered_data = filtered_data[filtered_data['School'].isin(school)]
+if year:
+    filtered_data = filtered_data[filtered_data['Year'].isin(year)]
+if term:
+    filtered_data = filtered_data[filtered_data['Term'].isin(term)]
 
 st.subheader("Key Metrics")
 col1, col2, col3 = st.columns(3)
