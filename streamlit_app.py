@@ -68,52 +68,52 @@ if selected_term != "All":
 if selected_franchisee != "All":
     filtered_df = filtered_df[filtered_df["Franchisee"] == selected_franchisee]
 
-# Metrics tables
-st.subheader("School by Number of Students by Term / Year")
-school_term_year = filtered_df.groupby(["Year", "Term", "School"]).agg({"Student Count": "sum"}).reset_index()
-st.markdown(school_term_year.to_html(index=False), unsafe_allow_html=True)
+# Metrics tables with accordions
+with st.expander("School by Number of Students by Term / Year"):
+    school_term_year = filtered_df.groupby(["Year", "Term", "School"]).agg({"Student Count": "sum"}).reset_index()
+    st.markdown(school_term_year.to_html(index=False), unsafe_allow_html=True)
 
-st.subheader("School by Instrument by Student Numbers")
-school_instr = filtered_df.groupby(["School", "Instrument"]).agg({"Student Count": "sum"}).reset_index()
-st.markdown(school_instr.to_html(index=False), unsafe_allow_html=True)
+with st.expander("School by Instrument by Student Numbers"):
+    school_instr = filtered_df.groupby(["School", "Instrument"]).agg({"Student Count": "sum"}).reset_index()
+    st.markdown(school_instr.to_html(index=False), unsafe_allow_html=True)
 
-st.subheader("Franchisee by School by Student Numbers by Term / Year")
-fssy = filtered_df.groupby(["Franchisee", "School", "Year", "Term"]).agg({"Student Count": "sum"}).reset_index()
-st.markdown(fssy.to_html(index=False), unsafe_allow_html=True)
+with st.expander("Franchisee by School by Student Numbers by Term / Year"):
+    fssy = filtered_df.groupby(["Franchisee", "School", "Year", "Term"]).agg({"Student Count": "sum"}).reset_index()
+    st.markdown(fssy.to_html(index=False), unsafe_allow_html=True)
 
-st.subheader("Franchisee by School by Lesson Numbers by Term / Year")
-fssy_lessons = filtered_df.groupby(["Franchisee", "School", "Year", "Term"]).agg({"Lesson Count": "sum"}).reset_index()
-st.markdown(fssy_lessons.to_html(index=False), unsafe_allow_html=True)
+with st.expander("Franchisee by School by Lesson Numbers by Term / Year"):
+    fssy_lessons = filtered_df.groupby(["Franchisee", "School", "Year", "Term"]).agg({"Lesson Count": "sum"}).reset_index()
+    st.markdown(fssy_lessons.to_html(index=False), unsafe_allow_html=True)
 
-st.subheader("Franchisee by School by Instrument (Number of Students)")
-fsi = filtered_df.groupby(["Franchisee", "School", "Instrument"]).agg({"Student Count": "sum"}).reset_index()
-st.markdown(fsi.to_html(index=False), unsafe_allow_html=True)
+with st.expander("Franchisee by School by Instrument (Number of Students)"):
+    fsi = filtered_df.groupby(["Franchisee", "School", "Instrument"]).agg({"Student Count": "sum"}).reset_index()
+    st.markdown(fsi.to_html(index=False), unsafe_allow_html=True)
 
-st.subheader("New Student Enrolment by Franchisee")
-new_enrol = filtered_df.groupby("Franchisee").agg({"New Enrolments": "sum"}).reset_index()
-st.markdown(new_enrol.to_html(index=False), unsafe_allow_html=True)
+with st.expander("New Student Enrolment by Franchisee"):
+    new_enrol = filtered_df.groupby("Franchisee").agg({"New Enrolments": "sum"}).reset_index()
+    st.markdown(new_enrol.to_html(index=False), unsafe_allow_html=True)
 
-st.subheader("Retention Rate by Franchisee")
-retention = filtered_df.groupby("Franchisee").agg({"Student Count": "sum", "New Enrolments": "sum"}).reset_index()
-retention["Retention Rate %"] = (1 - retention["New Enrolments"] / retention["Student Count"]).fillna(0) * 100
-st.markdown(retention[["Franchisee", "Retention Rate %"]].to_html(index=False), unsafe_allow_html=True)
+with st.expander("Retention Rate by Franchisee"):
+    retention = filtered_df.groupby("Franchisee").agg({"Student Count": "sum", "New Enrolments": "sum"}).reset_index()
+    retention["Retention Rate %"] = (1 - retention["New Enrolments"] / retention["Student Count"]).fillna(0) * 100
+    st.markdown(retention[["Franchisee", "Retention Rate %"]].to_html(index=False), unsafe_allow_html=True)
 
-st.subheader("Lesson Cancellations by Franchisee")
-cancel = filtered_df.groupby("Franchisee").agg({"Cancellations": "sum"}).reset_index()
-st.markdown(cancel.to_html(index=False), unsafe_allow_html=True)
+with st.expander("Lesson Cancellations by Franchisee"):
+    cancel = filtered_df.groupby("Franchisee").agg({"Cancellations": "sum"}).reset_index()
+    st.markdown(cancel.to_html(index=False), unsafe_allow_html=True)
 
-st.subheader("Average Revenue per Student by Franchisee")
-avg_rev = filtered_df.groupby("Franchisee").agg({"Avg Revenue": "mean"}).reset_index()
-st.markdown(avg_rev.to_html(index=False), unsafe_allow_html=True)
+with st.expander("Average Revenue per Student by Franchisee"):
+    avg_rev = filtered_df.groupby("Franchisee").agg({"Avg Revenue": "mean"}).reset_index()
+    st.markdown(avg_rev.to_html(index=False), unsafe_allow_html=True)
 
-st.subheader("Average Lifetime Revenue per Student by Franchisee")
-lifetime = filtered_df.groupby("Franchisee").agg({"Lifetime Revenue": "mean"}).reset_index()
-st.markdown(lifetime.to_html(index=False), unsafe_allow_html=True)
+with st.expander("Average Lifetime Revenue per Student by Franchisee"):
+    lifetime = filtered_df.groupby("Franchisee").agg({"Lifetime Revenue": "mean"}).reset_index()
+    st.markdown(lifetime.to_html(index=False), unsafe_allow_html=True)
 
-st.subheader("Total Revenue by Franchisee")
-total_rev = filtered_df.groupby("Franchisee").agg({"Lifetime Revenue": "sum"}).reset_index()
-st.markdown(total_rev.to_html(index=False), unsafe_allow_html=True)
+with st.expander("Total Revenue by Franchisee"):
+    total_rev = filtered_df.groupby("Franchisee").agg({"Lifetime Revenue": "sum"}).reset_index()
+    st.markdown(total_rev.to_html(index=False), unsafe_allow_html=True)
 
-st.subheader("Gross Profit by Franchisee")
-gross_profit = filtered_df.groupby("Franchisee").agg({"Gross Profit": "sum"}).reset_index()
-st.markdown(gross_profit.to_html(index=False), unsafe_allow_html=True)
+with st.expander("Gross Profit by Franchisee"):
+    gross_profit = filtered_df.groupby("Franchisee").agg({"Gross Profit": "sum"}).reset_index()
+    st.markdown(gross_profit.to_html(index=False), unsafe_allow_html=True)
