@@ -22,11 +22,9 @@ st.markdown("""
 # Sidebar controls
 st.sidebar.header("Filters")
 
-# Upload CSV and append to session state
 uploaded_file = st.sidebar.file_uploader("Upload CSV", type=["csv"])
 
 if "full_data" not in st.session_state:
-    # Generate placeholder data if no session data exists
     years = [2022, 2023, 2024]
     terms = ["Term 1", "Term 2", "Term 3", "Term 4"]
     franchisees = ["Bob Smith", "Alice Johnson", "Tom Lee", "Sophie Wright", "David Brown", "Emma Green", "Chris Adams", "Laura Hill", "James Fox", "Nina Wood"]
@@ -47,10 +45,11 @@ if "full_data" not in st.session_state:
                         avg_revenue = np.random.uniform(25, 50)
                         lifetime_revenue = avg_revenue * student_count * np.random.randint(3, 8)
                         gross_profit = lifetime_revenue * 0.65
-                        data.append([f, s, y, t, i, student_count, lesson_count, new_enrolments, cancellations, avg_revenue, lifetime_revenue, gross_profit])
+                        student_name = f"Student_{np.random.randint(1000, 9999)}"
+                        data.append([student_name, f, s, y, t, i, student_count, lesson_count, new_enrolments, cancellations, avg_revenue, lifetime_revenue, gross_profit])
 
     st.session_state["full_data"] = pd.DataFrame(data, columns=[
-        "Franchisee", "School", "Year", "Term", "Instrument",
+        "Student Name", "Franchisee", "School", "Year", "Term", "Instrument",
         "Student Count", "Lesson Count", "New Enrolments", "Cancellations",
         "Avg Revenue", "Lifetime Revenue", "Gross Profit"
     ])
@@ -61,24 +60,24 @@ if uploaded_file is not None and "upload_done" not in st.session_state:
         st.session_state["full_data"] = pd.concat([
             st.session_state["full_data"], new_data
         ], ignore_index=True)
+        st.session_state["last_upload"] = new_data
         st.success(f"Uploaded and added {len(new_data)} new rows.")
         st.session_state["upload_done"] = True
     except Exception as e:
         st.error(f"Upload failed: {e}")
 
-# ✅ Ensure this is applied after upload or session init
 df = st.session_state["full_data"]
 
-# Filter options
 years = sorted(df["Year"].unique())
 terms = sorted(df["Term"].unique())
 franchisees = sorted(df["Franchisee"].unique())
+students = sorted(df["Student Name"].unique())
 
 selected_year = st.sidebar.selectbox("Filter by Year", options=["All"] + list(years), index=0)
 selected_term = st.sidebar.selectbox("Filter by Term", options=["All"] + list(terms), index=0)
 selected_franchisee = st.sidebar.selectbox("Filter by Franchisee", options=["All"] + list(franchisees), index=0)
+selected_student = st.sidebar.selectbox("Filter by Student", options=["All"] + list(students), index=0)
 
-# Apply filters
 filtered_df = df.copy()
 if selected_year != "All":
     filtered_df = filtered_df[filtered_df["Year"] == selected_year]
@@ -86,8 +85,15 @@ if selected_term != "All":
     filtered_df = filtered_df[filtered_df["Term"] == selected_term]
 if selected_franchisee != "All":
     filtered_df = filtered_df[filtered_df["Franchisee"] == selected_franchisee]
+if selected_student != "All":
+    filtered_df = filtered_df[filtered_df["Student Name"] == selected_student]
 
-# Metrics tables with accordions
+with st.expander("📥 Recently Uploaded Rows"):
+    if "last_upload" in st.session_state:
+        st.markdown(st.session_state["last_upload"].to_html(index=False), unsafe_allow_html=True)
+    else:
+        st.info("No recent upload preview available.")
+
 with st.expander("School by Number of Students by Term / Year"):
     school_term_year = filtered_df.groupby(["Year", "Term", "School"]).agg({"Student Count": "sum"}).reset_index()
     st.markdown(school_term_year.to_html(index=False), unsafe_allow_html=True)
