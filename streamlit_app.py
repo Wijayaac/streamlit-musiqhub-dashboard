@@ -59,7 +59,7 @@ if uploaded_file is not None:
     new_data = pd.read_csv(uploaded_file)
     st.session_state["full_data"] = pd.concat([st.session_state["full_data"], new_data], ignore_index=True)
 
-# Filter options
+# Ensure df always reflects current session state
 df = st.session_state["full_data"]
 
 years = sorted(df["Year"].unique())
