@@ -27,16 +27,41 @@ if uploaded_file:
         st.stop()
 else:
     st.info("Using placeholder data. Upload a CSV to update.")
-    data = pd.DataFrame({
-        'Franchisee': ['Alice', 'Alice', 'Bob', 'Bob', 'Charlie', 'Charlie'],
-        'School': ['Greenwood', 'Greenwood', 'Lakeside', 'Hillview', 'Greenwood', 'Hillview'],
-        'Student Name': ['John', 'Mary', 'Steve', 'Anna', 'Lucy', 'Tom'],
-        'Instrument': ['Piano', 'Violin', 'Guitar', 'Piano', 'Drums', 'Violin'],
-        'Event Date': pd.to_datetime(['2024-02-15', '2024-03-20', '2024-03-15', '2024-04-10', '2024-02-28', '2024-04-05']),
-        'Lesson Status': ['Present', 'Present', 'Absent', 'Present', 'Present', 'Absent'],
-        'Revenue': [37.0, 37.0, 0.0, 37.0, 37.0, 0.0],
-        'Payroll Amount': [20.0, 20.0, 0.0, 20.0, 20.0, 0.0],
-    })
+    import random
+import numpy as np
+from datetime import datetime
+
+franchisees = [f"Franchisee {chr(65+i)}" for i in range(10)]
+schools = [f"School {i+1}" for i in range(20)]  # 2 per franchisee
+instruments = ["Piano", "Violin", "Guitar", "Drums", "Flute"]
+
+records = []
+current_year = datetime.now().year
+for f_index, franchisee in enumerate(franchisees):
+    franchisee_schools = schools[f_index*2:(f_index+1)*2]
+    for school in franchisee_schools:
+        for student_id in range(5):
+            student_name = f"Student_{f_index}_{student_id}"
+            instrument = random.choice(instruments)
+            for year in range(current_year - 2, current_year + 1):
+                for term in range(1, 5):
+                    month = term * 3 - 1
+                    event_date = pd.to_datetime(f"{year}-{month:02d}-15")
+                    lesson_status = random.choices(['Present', 'Absent'], weights=[0.85, 0.15])[0]
+                    revenue = 37.0 if lesson_status == 'Present' else 0.0
+                    payroll = 20.0 if lesson_status == 'Present' else 0.0
+                    records.append({
+                        'Franchisee': franchisee,
+                        'School': school,
+                        'Student Name': student_name,
+                        'Instrument': instrument,
+                        'Event Date': event_date,
+                        'Lesson Status': lesson_status,
+                        'Revenue': revenue,
+                        'Payroll Amount': payroll
+                    })
+
+data = pd.DataFrame(records)
 
 # Clean and enrich data
 if 'Event Date' in data.columns:
