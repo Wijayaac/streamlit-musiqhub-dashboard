@@ -59,9 +59,10 @@ if uploaded_file is not None:
     new_data = pd.read_csv(uploaded_file)
     st.session_state["full_data"] = pd.concat([st.session_state["full_data"], new_data], ignore_index=True)
 
-# Ensure df always reflects current session state
+# ✅ Ensure this is applied after upload or session init
 df = st.session_state["full_data"]
 
+# Filter options
 years = sorted(df["Year"].unique())
 terms = sorted(df["Term"].unique())
 franchisees = sorted(df["Franchisee"].unique())
