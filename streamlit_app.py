@@ -47,11 +47,16 @@ else:
     st.error("'Event Date' column missing or incorrectly named in CSV.")
     st.stop()
 
-# Sidebar Filters
-franchisee = st.sidebar.multiselect("Select Franchisee", options=data['Franchisee'].dropna().unique(), default=data['Franchisee'].dropna().unique())
-school = st.sidebar.multiselect("Select School", options=data['School'].dropna().unique(), default=data['School'].dropna().unique())
-year = st.sidebar.multiselect("Select Year", options=data['Year'].dropna().unique(), default=data['Year'].dropna().unique())
-term = st.sidebar.multiselect("Select Term", options=data['Term'].dropna().unique(), default=data['Term'].dropna().unique())
+# Sidebar Filters with default to all
+all_franchisees = data['Franchisee'].dropna().unique()
+all_schools = data['School'].dropna().unique()
+all_years = data['Year'].dropna().unique()
+all_terms = data['Term'].dropna().unique()
+
+franchisee = st.sidebar.multiselect("Select Franchisee", options=all_franchisees, default=list(all_franchisees))
+school = st.sidebar.multiselect("Select School", options=all_schools, default=list(all_schools))
+year = st.sidebar.multiselect("Select Year", options=all_years, default=list(all_years))
+term = st.sidebar.multiselect("Select Term", options=all_terms, default=list(all_terms))
 
 # Filter data
 filtered_data = data[
@@ -68,22 +73,26 @@ col1.metric("Total Students", filtered_data['Student Name'].nunique())
 col2.metric("Total Revenue", f"${filtered_data['Revenue'].sum():.2f}")
 col3.metric("Gross Profit", f"${(filtered_data['Revenue'] - filtered_data['Payroll Amount']).sum():.2f}")
 
-# Students by School
+# Students by School (Table)
 st.subheader("Students by School")
-st.bar_chart(filtered_data.groupby('School')['Student Name'].nunique())
+school_table = filtered_data.groupby('School')['Student Name'].nunique().reset_index(name='Student Count')
+st.dataframe(school_table)
 
-# Instruments by Student Count
+# Instruments by Student Count (Table)
 st.subheader("Instruments by Number of Students")
-st.bar_chart(filtered_data.groupby('Instrument')['Student Name'].nunique())
+instrument_table = filtered_data.groupby('Instrument')['Student Name'].nunique().reset_index(name='Student Count')
+st.dataframe(instrument_table)
 
-# Lessons by Franchisee
+# Lessons by Franchisee (Table)
 st.subheader("Lessons by Franchisee")
-st.bar_chart(filtered_data.groupby('Franchisee').size())
+lessons_table = filtered_data.groupby('Franchisee').size().reset_index(name='Lesson Count')
+st.dataframe(lessons_table)
 
-# Lesson Cancellations
+# Lesson Cancellations (Table)
 st.subheader("Lesson Cancellations by Franchisee")
 cancellations = filtered_data[filtered_data['Lesson Status'] != 'Present']
-st.bar_chart(cancellations.groupby('Franchisee').size())
+cancellations_table = cancellations.groupby('Franchisee').size().reset_index(name='Cancellations')
+st.dataframe(cancellations_table)
 
 # Average Revenue Per Student
 st.subheader("Average Revenue per Student")
