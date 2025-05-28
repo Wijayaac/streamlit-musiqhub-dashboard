@@ -132,7 +132,7 @@ col3.metric("Gross Profit", f"${(filtered_data['Revenue'] - filtered_data['Payro
 
 st.subheader("📘 School by Number of Students by Term / Year")
 school_term_year = filtered_data.groupby(['School', 'Term', 'Year'])['Student Name'].nunique().reset_index(name='Student Count')
-st.dataframe(school_term_year, , use_container_width=True)
+st.dataframe(school_term_year)
 
 st.subheader("📘 School by Instrument by Student Numbers")
 school_instrument = filtered_data.groupby(['School', 'Instrument'])['Student Name'].nunique().reset_index(name='Student Count')
