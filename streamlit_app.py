@@ -55,9 +55,16 @@ if "full_data" not in st.session_state:
         "Avg Revenue", "Lifetime Revenue", "Gross Profit"
     ])
 
-if uploaded_file is not None:
-    new_data = pd.read_csv(uploaded_file)
-    st.session_state["full_data"] = pd.concat([st.session_state["full_data"], new_data], ignore_index=True)
+if uploaded_file is not None and "upload_done" not in st.session_state:
+    try:
+        new_data = pd.read_csv(uploaded_file)
+        st.session_state["full_data"] = pd.concat([
+            st.session_state["full_data"], new_data
+        ], ignore_index=True)
+        st.success(f"Uploaded and added {len(new_data)} new rows.")
+        st.session_state["upload_done"] = True
+    except Exception as e:
+        st.error(f"Upload failed: {e}")
 
 # ✅ Ensure this is applied after upload or session init
 df = st.session_state["full_data"]
