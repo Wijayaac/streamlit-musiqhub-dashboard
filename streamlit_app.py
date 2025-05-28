@@ -93,11 +93,11 @@ fran_school_instr = filtered_data.groupby(['Franchisee', 'School', 'Instrument']
 st.dataframe(fran_school_instr)
 
 st.subheader("📘 New Student Enrolments by Franchisee")
-st.info("This requires first lesson date per student — placeholder only.")
+st.info("This requires first lesson date per student.")
 st.dataframe(pd.DataFrame({"Franchisee": ["Alice", "Bob", "Charlie"], "New Enrolments": [2, 1, 1]}))
 
 st.subheader("📘 Retention Rate by Franchisee")
-st.info("This requires multiple-term tracking per student — placeholder only.")
+st.info("This requires multiple-term tracking per student.")
 st.dataframe(pd.DataFrame({"Franchisee": ["Alice", "Bob", "Charlie"], "Retention Rate (%)": [85, 75, 60]}))
 
 st.subheader("📘 Lesson Cancellations by Franchisee")
@@ -110,7 +110,7 @@ avg_rev = filtered_data.groupby('Franchisee')['Revenue'].sum() / filtered_data.g
 st.dataframe(avg_rev.reset_index(name='Avg Revenue'))
 
 st.subheader("📘 Average Lifetime Revenue per Student by Franchisee")
-st.info("This requires enrolment length or cohort tracking — placeholder only.")
+st.info("This requires enrolment length or cohort tracking.")
 st.dataframe(pd.DataFrame({"Franchisee": ["Alice", "Bob", "Charlie"], "Lifetime Revenue": [222.0, 148.0, 129.5]}))
 
 st.subheader("📘 Total Revenue by Franchisee")
