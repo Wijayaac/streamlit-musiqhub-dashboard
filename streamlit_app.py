@@ -6,6 +6,18 @@ from io import StringIO
 st.set_page_config(page_title="MusiqHub Dashboard", layout="wide")
 st.title("MusiqHub Franchise Dashboard")
 
+# Custom CSS to left-align all table contents
+st.markdown("""
+<style>
+    .stDataFrame td {
+        text-align: left !important;
+    }
+    .stDataFrame th {
+        text-align: left !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # ===============================
 # ✅ Cloudflare Access Reminder
 # ===============================
@@ -120,7 +132,7 @@ col3.metric("Gross Profit", f"${(filtered_data['Revenue'] - filtered_data['Payro
 
 st.subheader("📘 School by Number of Students by Term / Year")
 school_term_year = filtered_data.groupby(['School', 'Term', 'Year'])['Student Name'].nunique().reset_index(name='Student Count')
-st.dataframe(\1, use_container_width=True)
+st.dataframe(school_term_year, , use_container_width=True)
 
 st.subheader("📘 School by Instrument by Student Numbers")
 school_instrument = filtered_data.groupby(['School', 'Instrument'])['Student Name'].nunique().reset_index(name='Student Count')
