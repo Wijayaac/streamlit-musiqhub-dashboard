@@ -19,6 +19,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Sidebar controls
+st.sidebar.header("Filters")
+
+# Upload CSV (placeholder functionality)
+st.sidebar.file_uploader("Upload CSV", type=["csv"])
+
 # Generate placeholder data
 years = [2022, 2023, 2024]
 terms = ["Term 1", "Term 2", "Term 3", "Term 4"]
@@ -49,9 +55,9 @@ df = pd.DataFrame(data, columns=[
 ])
 
 # Optional filters
-selected_year = st.selectbox("Filter by Year", options=["All"] + years, index=0)
-selected_term = st.selectbox("Filter by Term", options=["All"] + terms, index=0)
-selected_franchisee = st.selectbox("Filter by Franchisee", options=["All"] + franchisees, index=0)
+selected_year = st.sidebar.selectbox("Filter by Year", options=["All"] + years, index=0)
+selected_term = st.sidebar.selectbox("Filter by Term", options=["All"] + terms, index=0)
+selected_franchisee = st.sidebar.selectbox("Filter by Franchisee", options=["All"] + franchisees, index=0)
 
 # Apply filters
 filtered_df = df.copy()
