@@ -22,42 +22,53 @@ st.markdown("""
 # Sidebar controls
 st.sidebar.header("Filters")
 
-# Upload CSV (placeholder functionality)
-st.sidebar.file_uploader("Upload CSV", type=["csv"])
+# Upload CSV and append to session state
+uploaded_file = st.sidebar.file_uploader("Upload CSV", type=["csv"])
 
-# Generate placeholder data
-years = [2022, 2023, 2024]
-terms = ["Term 1", "Term 2", "Term 3", "Term 4"]
-franchisees = ["Bob Smith", "Alice Johnson", "Tom Lee", "Sophie Wright", "David Brown", "Emma Green", "Chris Adams", "Laura Hill", "James Fox", "Nina Wood"]
-schools = ["Mt Roskill Grammar", "Epsom Girls Grammar", "Avondale College", "Lynfield College", "Onehunga High", "Auckland Grammar", "St Cuthbert's", "Baradene College", "Western Springs College", "Selwyn College"]
-instruments = ["Guitar", "Piano", "Drums", "Violin", "Flute"]
+if "full_data" not in st.session_state:
+    # Generate placeholder data if no session data exists
+    years = [2022, 2023, 2024]
+    terms = ["Term 1", "Term 2", "Term 3", "Term 4"]
+    franchisees = ["Bob Smith", "Alice Johnson", "Tom Lee", "Sophie Wright", "David Brown", "Emma Green", "Chris Adams", "Laura Hill", "James Fox", "Nina Wood"]
+    schools = ["Mt Roskill Grammar", "Epsom Girls Grammar", "Avondale College", "Lynfield College", "Onehunga High", "Auckland Grammar", "St Cuthbert's", "Baradene College", "Western Springs College", "Selwyn College"]
+    instruments = ["Guitar", "Piano", "Drums", "Violin", "Flute"]
 
-np.random.seed(42)
-data = []
-for f in franchisees:
-    for s in schools[:2]:
-        for y in years:
-            for t in terms:
-                for i in instruments:
-                    student_count = np.random.randint(1, 6)
-                    lesson_count = student_count * np.random.randint(4, 10)
-                    new_enrolments = np.random.randint(0, 3)
-                    cancellations = np.random.randint(0, 3)
-                    avg_revenue = np.random.uniform(25, 50)
-                    lifetime_revenue = avg_revenue * student_count * np.random.randint(3, 8)
-                    gross_profit = lifetime_revenue * 0.65
-                    data.append([f, s, y, t, i, student_count, lesson_count, new_enrolments, cancellations, avg_revenue, lifetime_revenue, gross_profit])
+    np.random.seed(42)
+    data = []
+    for f in franchisees:
+        for s in schools[:2]:
+            for y in years:
+                for t in terms:
+                    for i in instruments:
+                        student_count = np.random.randint(1, 6)
+                        lesson_count = student_count * np.random.randint(4, 10)
+                        new_enrolments = np.random.randint(0, 3)
+                        cancellations = np.random.randint(0, 3)
+                        avg_revenue = np.random.uniform(25, 50)
+                        lifetime_revenue = avg_revenue * student_count * np.random.randint(3, 8)
+                        gross_profit = lifetime_revenue * 0.65
+                        data.append([f, s, y, t, i, student_count, lesson_count, new_enrolments, cancellations, avg_revenue, lifetime_revenue, gross_profit])
 
-df = pd.DataFrame(data, columns=[
-    "Franchisee", "School", "Year", "Term", "Instrument",
-    "Student Count", "Lesson Count", "New Enrolments", "Cancellations",
-    "Avg Revenue", "Lifetime Revenue", "Gross Profit"
-])
+    st.session_state["full_data"] = pd.DataFrame(data, columns=[
+        "Franchisee", "School", "Year", "Term", "Instrument",
+        "Student Count", "Lesson Count", "New Enrolments", "Cancellations",
+        "Avg Revenue", "Lifetime Revenue", "Gross Profit"
+    ])
 
-# Optional filters
-selected_year = st.sidebar.selectbox("Filter by Year", options=["All"] + years, index=0)
-selected_term = st.sidebar.selectbox("Filter by Term", options=["All"] + terms, index=0)
-selected_franchisee = st.sidebar.selectbox("Filter by Franchisee", options=["All"] + franchisees, index=0)
+if uploaded_file is not None:
+    new_data = pd.read_csv(uploaded_file)
+    st.session_state["full_data"] = pd.concat([st.session_state["full_data"], new_data], ignore_index=True)
+
+# Filter options
+df = st.session_state["full_data"]
+
+years = sorted(df["Year"].unique())
+terms = sorted(df["Term"].unique())
+franchisees = sorted(df["Franchisee"].unique())
+
+selected_year = st.sidebar.selectbox("Filter by Year", options=["All"] + list(years), index=0)
+selected_term = st.sidebar.selectbox("Filter by Term", options=["All"] + list(terms), index=0)
+selected_franchisee = st.sidebar.selectbox("Filter by Franchisee", options=["All"] + list(franchisees), index=0)
 
 # Apply filters
 filtered_df = df.copy()
