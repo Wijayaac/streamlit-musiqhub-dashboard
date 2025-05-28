@@ -104,11 +104,23 @@ st.dataframe(fran_school_instr)
 
 st.subheader("📘 New Student Enrolments by Franchisee")
 st.info("This requires first lesson date per student.")
-st.dataframe(pd.DataFrame({"Franchisee": ["Alice", "Bob", "Charlie"], "New Enrolments": [2, 1, 1]}))
+placeholder_enrolments = pd.DataFrame({
+    "Franchisee": ["Alice", "Bob", "Charlie"],
+    "New Enrolments": [2, 1, 1]
+})
+if franchisee:
+    placeholder_enrolments = placeholder_enrolments[placeholder_enrolments['Franchisee'].isin(franchisee)]
+st.dataframe(placeholder_enrolments)
 
 st.subheader("📘 Retention Rate by Franchisee")
 st.info("This requires multiple-term tracking per student.")
-st.dataframe(pd.DataFrame({"Franchisee": ["Alice", "Bob", "Charlie"], "Retention Rate (%)": [85, 75, 60]}))
+placeholder_retention = pd.DataFrame({
+    "Franchisee": ["Alice", "Bob", "Charlie"],
+    "Retention Rate (%)": [85, 75, 60]
+})
+if franchisee:
+    placeholder_retention = placeholder_retention[placeholder_retention['Franchisee'].isin(franchisee)]
+st.dataframe(placeholder_retention)
 
 st.subheader("📘 Lesson Cancellations by Franchisee")
 cancellations = filtered_data[filtered_data['Lesson Status'] != 'Present']
@@ -121,7 +133,13 @@ st.dataframe(avg_rev.reset_index(name='Avg Revenue'))
 
 st.subheader("📘 Average Lifetime Revenue per Student by Franchisee")
 st.info("This requires enrolment length or cohort tracking.")
-st.dataframe(pd.DataFrame({"Franchisee": ["Alice", "Bob", "Charlie"], "Lifetime Revenue": [222.0, 148.0, 129.5]}))
+placeholder_lifetime = pd.DataFrame({
+    "Franchisee": ["Alice", "Bob", "Charlie"],
+    "Lifetime Revenue": [222.0, 148.0, 129.5]
+})
+if franchisee:
+    placeholder_lifetime = placeholder_lifetime[placeholder_lifetime['Franchisee'].isin(franchisee)]
+st.dataframe(placeholder_lifetime)
 
 st.subheader("📘 Total Revenue by Franchisee")
 total_rev = filtered_data.groupby('Franchisee')['Revenue'].sum().reset_index(name='Total Revenue')
