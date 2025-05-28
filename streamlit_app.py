@@ -66,39 +66,54 @@ filtered_data = data[
     data['Term'].isin(term)
 ]
 
-# KPI Metrics
 st.subheader("Key Metrics")
 col1, col2, col3 = st.columns(3)
 col1.metric("Total Students", filtered_data['Student Name'].nunique())
 col2.metric("Total Revenue", f"${filtered_data['Revenue'].sum():.2f}")
 col3.metric("Gross Profit", f"${(filtered_data['Revenue'] - filtered_data['Payroll Amount']).sum():.2f}")
 
-# Students by School (Table)
-st.subheader("Students by School")
-school_table = filtered_data.groupby('School')['Student Name'].nunique().reset_index(name='Student Count')
-st.dataframe(school_table)
+st.subheader("📘 School by Number of Students by Term / Year")
+school_term_year = filtered_data.groupby(['School', 'Term', 'Year'])['Student Name'].nunique().reset_index(name='Student Count')
+st.dataframe(school_term_year)
 
-# Instruments by Student Count (Table)
-st.subheader("Instruments by Number of Students")
-instrument_table = filtered_data.groupby('Instrument')['Student Name'].nunique().reset_index(name='Student Count')
-st.dataframe(instrument_table)
+st.subheader("📘 School by Instrument by Student Numbers")
+school_instrument = filtered_data.groupby(['School', 'Instrument'])['Student Name'].nunique().reset_index(name='Student Count')
+st.dataframe(school_instrument)
 
-# Lessons by Franchisee (Table)
-st.subheader("Lessons by Franchisee")
-lessons_table = filtered_data.groupby('Franchisee').size().reset_index(name='Lesson Count')
-st.dataframe(lessons_table)
+st.subheader("📘 Franchisee by School by Student Numbers by Term / Year")
+fran_school_term = filtered_data.groupby(['Franchisee', 'School', 'Term', 'Year'])['Student Name'].nunique().reset_index(name='Student Count')
+st.dataframe(fran_school_term)
 
-# Lesson Cancellations (Table)
-st.subheader("Lesson Cancellations by Franchisee")
+st.subheader("📘 Franchisee by School by Lesson Numbers by Term / Year")
+fran_lessons = filtered_data.groupby(['Franchisee', 'School', 'Term', 'Year']).size().reset_index(name='Lesson Count')
+st.dataframe(fran_lessons)
+
+st.subheader("📘 Franchisee by School by Instrument (Number of Students)")
+fran_school_instr = filtered_data.groupby(['Franchisee', 'School', 'Instrument'])['Student Name'].nunique().reset_index(name='Student Count')
+st.dataframe(fran_school_instr)
+
+st.subheader("📘 New Student Enrolments by Franchisee")
+st.info("This requires first lesson date per student — placeholder only.")
+
+st.subheader("📘 Retention Rate by Franchisee")
+st.info("This requires multiple-term tracking per student — placeholder only.")
+
+st.subheader("📘 Lesson Cancellations by Franchisee")
 cancellations = filtered_data[filtered_data['Lesson Status'] != 'Present']
 cancellations_table = cancellations.groupby('Franchisee').size().reset_index(name='Cancellations')
 st.dataframe(cancellations_table)
 
-# Average Revenue Per Student
-st.subheader("Average Revenue per Student")
+st.subheader("📘 Average Revenue per Student by Franchisee")
 avg_rev = filtered_data.groupby('Franchisee')['Revenue'].sum() / filtered_data.groupby('Franchisee')['Student Name'].nunique()
 st.dataframe(avg_rev.reset_index(name='Avg Revenue'))
 
-# Average Lifetime Revenue Placeholder (assumes retention metric available in real data)
-st.subheader("Average Lifetime Revenue (Placeholder)")
-st.info("This metric requires enrolment date and retention duration. Placeholder only.")
+st.subheader("📘 Average Lifetime Revenue per Student by Franchisee")
+st.info("This requires enrolment length or cohort tracking — placeholder only.")
+
+st.subheader("📘 Total Revenue by Franchisee")
+total_rev = filtered_data.groupby('Franchisee')['Revenue'].sum().reset_index(name='Total Revenue')
+st.dataframe(total_rev)
+
+st.subheader("📘 Gross Profit by Franchisee")
+gross_profit = filtered_data.groupby('Franchisee').apply(lambda df: df['Revenue'].sum() - df['Payroll Amount'].sum()).reset_index(name='Gross Profit')
+st.dataframe(gross_profit)
