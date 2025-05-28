@@ -31,17 +31,29 @@ else:
 import numpy as np
 from datetime import datetime
 
-franchisees = [f"Franchisee {chr(65+i)}" for i in range(10)]
-schools = [f"School {i+1}" for i in range(20)]  # 2 per franchisee
+franchisees = [
+    "Amelia Singh", "Ben Chen", "Chloe Patel", "Daniel Thompson", "Ella Wang",
+    "Felix Roberts", "Grace Nakamura", "Harper Sione", "Isaac Li", "Jasmine Reddy"
+]
+school_names = [
+    "Auckland Grammar", "Epsom Girls Grammar", "Mount Albert Grammar", "Selwyn College", 
+    "Avondale College", "St Peter's College", "Baradene College", "Lynfield College", 
+    "Western Springs College", "MacLean's College", "Takapuna Grammar", "Westlake Boys High", 
+    "Westlake Girls High", "Long Bay College", "Glendowie College", "Botany Downs Secondary",
+    "Pakuranga College", "Kelston Boys High", "Marist College", "Edgewater College"
+]
+franchisee_schools = {f: [school_names[i*2], school_names[i*2+1]] for i, f in enumerate(franchisees)}
+
+first_names = ["Liam", "Olivia", "Noah", "Emma", "Oliver", "Ava", "Elijah", "Sophia", "Lucas", "Isabella"]
+last_names = ["Brown", "Wilson", "Taylor", "Johnson", "Lee", "Martin", "Walker", "Young", "Allen", "King"]
 instruments = ["Piano", "Violin", "Guitar", "Drums", "Flute"]
 
 records = []
 current_year = datetime.now().year
-for f_index, franchisee in enumerate(franchisees):
-    franchisee_schools = schools[f_index*2:(f_index+1)*2]
-    for school in franchisee_schools:
-        for student_id in range(5):
-            student_name = f"Student_{f_index}_{student_id}"
+for f in franchisees:
+    for school in franchisee_schools[f]:
+        for _ in range(5):
+            student_name = f"{random.choice(first_names)} {random.choice(last_names)}"
             instrument = random.choice(instruments)
             for year in range(current_year - 2, current_year + 1):
                 for term in range(1, 5):
@@ -51,7 +63,7 @@ for f_index, franchisee in enumerate(franchisees):
                     revenue = 37.0 if lesson_status == 'Present' else 0.0
                     payroll = 20.0 if lesson_status == 'Present' else 0.0
                     records.append({
-                        'Franchisee': franchisee,
+                        'Franchisee': f,
                         'School': school,
                         'Student Name': student_name,
                         'Instrument': instrument,
@@ -60,7 +72,6 @@ for f_index, franchisee in enumerate(franchisees):
                         'Revenue': revenue,
                         'Payroll Amount': payroll
                     })
-
 data = pd.DataFrame(records)
 
 # Clean and enrich data
