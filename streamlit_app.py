@@ -8,7 +8,7 @@ st.set_page_config(page_title="MusiqHub Dashboard", layout="wide")
 # Tab selection
 selected_tab = st.sidebar.radio("Select Page", ["MusiqHub Dashboard", "Event Profit Summary"])
 
-# Common CSS
+# Common CSS for both pages
 st.markdown("""
 <style>
     table {
@@ -21,9 +21,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# -------------------------------
-# TAB 1: MusiqHub Dashboard
-# -------------------------------
+# Page 1: MusiqHub Dashboard
 if selected_tab == "MusiqHub Dashboard":
     st.title("MusiqHub Franchise Dashboard")
 
@@ -62,9 +60,9 @@ if selected_tab == "MusiqHub Dashboard":
     if uploaded_file is not None:
         new_data = pd.read_csv(uploaded_file)
         st.session_state["full_data"] = pd.concat([st.session_state["full_data"], new_data], ignore_index=True)
-        st.success(f"Uploaded and added {len(new_data)} new rows.")
 
     df = st.session_state["full_data"]
+
     years = sorted(df["Year"].unique())
     terms = sorted(df["Term"].unique())
     franchisees = sorted(df["Franchisee"].unique())
@@ -81,58 +79,77 @@ if selected_tab == "MusiqHub Dashboard":
     if selected_franchisee != "All":
         filtered_df = filtered_df[filtered_df["Franchisee"] == selected_franchisee]
 
-    # Dashboard accordions
     with st.expander("School by Number of Students by Term / Year"):
-        st.markdown(filtered_df.groupby(["Year", "Term", "School"])["Student Count"].sum().reset_index().to_html(index=False), unsafe_allow_html=True)
+        st.markdown(filtered_df.groupby(["Year", "Term", "School"]).agg({"Student Count": "sum"}).reset_index().to_html(index=False), unsafe_allow_html=True)
 
     with st.expander("School by Instrument by Student Numbers"):
-        st.markdown(filtered_df.groupby(["School", "Instrument"])["Student Count"].sum().reset_index().to_html(index=False), unsafe_allow_html=True)
+        st.markdown(filtered_df.groupby(["School", "Instrument"]).agg({"Student Count": "sum"}).reset_index().to_html(index=False), unsafe_allow_html=True)
 
     with st.expander("Franchisee by School by Student Numbers by Term / Year"):
-        st.markdown(filtered_df.groupby(["Franchisee", "School", "Year", "Term"])["Student Count"].sum().reset_index().to_html(index=False), unsafe_allow_html=True)
+        st.markdown(filtered_df.groupby(["Franchisee", "School", "Year", "Term"]).agg({"Student Count": "sum"}).reset_index().to_html(index=False), unsafe_allow_html=True)
 
     with st.expander("Franchisee by School by Lesson Numbers by Term / Year"):
-        st.markdown(filtered_df.groupby(["Franchisee", "School", "Year", "Term"])["Lesson Count"].sum().reset_index().to_html(index=False), unsafe_allow_html=True)
+        st.markdown(filtered_df.groupby(["Franchisee", "School", "Year", "Term"]).agg({"Lesson Count": "sum"}).reset_index().to_html(index=False), unsafe_allow_html=True)
 
     with st.expander("Franchisee by School by Instrument (Number of Students)"):
-        st.markdown(filtered_df.groupby(["Franchisee", "School", "Instrument"])["Student Count"].sum().reset_index().to_html(index=False), unsafe_allow_html=True)
+        st.markdown(filtered_df.groupby(["Franchisee", "School", "Instrument"]).agg({"Student Count": "sum"}).reset_index().to_html(index=False), unsafe_allow_html=True)
 
     with st.expander("New Student Enrolment by Franchisee"):
-        st.markdown(filtered_df.groupby("Franchisee")["New Enrolments"].sum().reset_index().to_html(index=False), unsafe_allow_html=True)
+        st.markdown(filtered_df.groupby("Franchisee").agg({"New Enrolments": "sum"}).reset_index().to_html(index=False), unsafe_allow_html=True)
 
     with st.expander("Retention Rate by Franchisee"):
-        r = filtered_df.groupby("Franchisee").agg({"Student Count": "sum", "New Enrolments": "sum"}).reset_index()
-        r["Retention Rate %"] = (1 - r["New Enrolments"] / r["Student Count"]).fillna(0) * 100
-        st.markdown(r[["Franchisee", "Retention Rate %"]].to_html(index=False), unsafe_allow_html=True)
+        retention = filtered_df.groupby("Franchisee").agg({"Student Count": "sum", "New Enrolments": "sum"}).reset_index()
+        retention["Retention Rate %"] = (1 - retention["New Enrolments"] / retention["Student Count"]).fillna(0) * 100
+        st.markdown(retention[["Franchisee", "Retention Rate %"]].to_html(index=False), unsafe_allow_html=True)
 
     with st.expander("Lesson Cancellations by Franchisee"):
-        st.markdown(filtered_df.groupby("Franchisee")["Cancellations"].sum().reset_index().to_html(index=False), unsafe_allow_html=True)
+        st.markdown(filtered_df.groupby("Franchisee").agg({"Cancellations": "sum"}).reset_index().to_html(index=False), unsafe_allow_html=True)
 
     with st.expander("Average Revenue per Student by Franchisee"):
-        st.markdown(filtered_df.groupby("Franchisee")["Avg Revenue"].mean().reset_index().to_html(index=False), unsafe_allow_html=True)
+        st.markdown(filtered_df.groupby("Franchisee").agg({"Avg Revenue": "mean"}).reset_index().to_html(index=False), unsafe_allow_html=True)
 
     with st.expander("Average Lifetime Revenue per Student by Franchisee"):
-        st.markdown(filtered_df.groupby("Franchisee")["Lifetime Revenue"].mean().reset_index().to_html(index=False), unsafe_allow_html=True)
+        st.markdown(filtered_df.groupby("Franchisee").agg({"Lifetime Revenue": "mean"}).reset_index().to_html(index=False), unsafe_allow_html=True)
 
     with st.expander("Total Revenue by Franchisee"):
-        st.markdown(filtered_df.groupby("Franchisee")["Lifetime Revenue"].sum().reset_index().to_html(index=False), unsafe_allow_html=True)
+        st.markdown(filtered_df.groupby("Franchisee").agg({"Lifetime Revenue": "sum"}).reset_index().to_html(index=False), unsafe_allow_html=True)
 
     with st.expander("Gross Profit by Franchisee"):
-        st.markdown(filtered_df.groupby("Franchisee")["Gross Profit"].sum().reset_index().to_html(index=False), unsafe_allow_html=True)
+        st.markdown(filtered_df.groupby("Franchisee").agg({"Gross Profit": "sum"}).reset_index().to_html(index=False), unsafe_allow_html=True)
 
-# -------------------------------
-# TAB 2: Event Profit Summary
-# -------------------------------
-else:
+# Page 2: Event Profit Summary
+elif selected_tab == "Event Profit Summary":
     st.title("Event Profit Summary")
-    xlsx = st.file_uploader("Upload Event Profit Excel File", type="xlsx", key="event_excel")
+    uploaded_excel = st.file_uploader("Upload Event Profit Excel File", type=["xlsx"], key="event_excel")
 
-    if xlsx is not None:
-        sheets = pd.read_excel(xlsx, sheet_name=None)
+    if uploaded_excel:
+        xls = pd.ExcelFile(uploaded_excel)
 
-        for sheet_name, df in sheets.items():
-            if df.shape[1] > 1 and df.dropna(how="all").shape[0] > 0:
-                st.subheader(f"📘 {sheet_name} Sheet")
-                st.markdown(df.dropna(how="all").head(50).to_html(index=False), unsafe_allow_html=True)
-            else:
-                st.warning(f"'{sheet_name}' appears to be empty or a placeholder.")
+        support_fee_table = xls.parse(sheet_name=0)
+        room_hire = xls.parse(sheet_name=1)
+        feb_data = xls.parse(sheet_name=2)
+
+        # Hide legends and filter rows with actual lessons
+        feb_data_clean = feb_data[feb_data['Student Name'].notna() & feb_data['Lesson Fee excl GST'].notna()]
+
+        with st.expander("📘 Room Hire Lookup Table"):
+            st.dataframe(room_hire)
+
+        with st.expander("📗 Feb 2025 Lessons (Cleaned)"):
+            st.dataframe(feb_data_clean.reset_index(drop=True))
+
+        with st.expander("📊 Summary Totals"):
+            total_lessons = feb_data_clean.shape[0]
+            total_lesson_value = feb_data_clean['Billed Amount'].astype(float).sum()
+            total_room_hire = feb_data_clean['Room Hire'].astype(float).sum()
+            total_gst = feb_data_clean['GST Component'].astype(float).sum()
+            net_amount = total_lesson_value - total_room_hire
+            
+            st.metric("Total Lessons", total_lessons)
+            st.metric("Gross Revenue", f"${total_lesson_value:,.2f}")
+            st.metric("Room Hire Total", f"${total_room_hire:,.2f}")
+            st.metric("GST Total", f"${total_gst:,.2f}")
+            st.metric("Net Revenue (excl Room & GST)", f"${net_amount:,.2f}")
+
+    else:
+        st.warning("Please upload a valid Excel file.")
