@@ -124,16 +124,12 @@ elif selected_tab == "Event Profit Summary":
 
     if uploaded_excel:
         xls = pd.ExcelFile(uploaded_excel)
-
         support_fee_table = xls.parse(sheet_name=0)
         room_hire = xls.parse(sheet_name=1)
         feb_data = xls.parse(sheet_name=2)
 
-        # Hide legends and filter rows with actual lessons
+        # Filter rows with actual lesson data only (ignore legend rows)
         feb_data_clean = feb_data[feb_data['Student Name'].notna() & feb_data['Lesson Fee excl GST'].notna()]
-
-        with st.expander("📘 Room Hire Lookup Table"):
-            st.dataframe(room_hire)
 
         with st.expander("📗 Feb 2025 Lessons (Cleaned)"):
             st.dataframe(feb_data_clean.reset_index(drop=True))
