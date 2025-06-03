@@ -8,7 +8,7 @@ st.set_page_config(page_title="MusiqHub Dashboard", layout="wide")
 # Tab selection
 selected_tab = st.sidebar.radio("Select Page", ["MusiqHub Dashboard", "Event Profit Summary"])
 
-# Common CSS for both pages
+# Common CSS
 st.markdown("""
 <style>
     table {
@@ -124,12 +124,17 @@ elif selected_tab == "Event Profit Summary":
 
     if uploaded_excel:
         xls = pd.ExcelFile(uploaded_excel)
+
+        # Sheets
         support_fee_table = xls.parse(sheet_name=0)
         room_hire = xls.parse(sheet_name=1)
         feb_data = xls.parse(sheet_name=2)
 
-        # Filter rows with actual lesson data only (ignore legend rows)
-        feb_data_clean = feb_data[feb_data['Student Name'].notna() & feb_data['Lesson Fee excl GST'].notna()]
+        # Cleaned data
+        feb_data_clean = feb_data[
+            feb_data['Student'].notna() &
+            feb_data['Lesson Fee excl GST'].notna()
+        ]
 
         with st.expander("📗 Feb 2025 Lessons (Cleaned)"):
             st.dataframe(feb_data_clean.reset_index(drop=True))
@@ -140,12 +145,11 @@ elif selected_tab == "Event Profit Summary":
             total_room_hire = feb_data_clean['Room Hire'].astype(float).sum()
             total_gst = feb_data_clean['GST Component'].astype(float).sum()
             net_amount = total_lesson_value - total_room_hire
-            
+
             st.metric("Total Lessons", total_lessons)
             st.metric("Gross Revenue", f"${total_lesson_value:,.2f}")
             st.metric("Room Hire Total", f"${total_room_hire:,.2f}")
             st.metric("GST Total", f"${total_gst:,.2f}")
             st.metric("Net Revenue (excl Room & GST)", f"${net_amount:,.2f}")
-
     else:
         st.warning("Please upload a valid Excel file.")
