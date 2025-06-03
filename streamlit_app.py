@@ -8,7 +8,7 @@ st.set_page_config(page_title="MusiqHub Dashboard", layout="wide")
 # Tab selection
 selected_tab = st.sidebar.radio("Select Page", ["MusiqHub Dashboard", "Event Profit Summary"])
 
-# Common CSS
+# Common CSS for both pages
 st.markdown("""
 <style>
     table {
@@ -125,17 +125,22 @@ elif selected_tab == "Event Profit Summary":
     if uploaded_excel:
         xls = pd.ExcelFile(uploaded_excel)
 
-        # Sheets
+        # Parse all sheets
         support_fee_table = xls.parse(sheet_name=0)
         room_hire = xls.parse(sheet_name=1)
         feb_data = xls.parse(sheet_name=2)
 
-        # Cleaned data
-        feb_data_clean = feb_data[
-            feb_data['Student'].notna() &
-            feb_data['Lesson Fee excl GST'].notna()
-        ]
+        # Only display cleaned lesson data, skip legends
+        if "Student Name" in feb_data.columns:
+            feb_data_clean = feb_data[
+                feb_data['Student Name'].notna() &
+                feb_data['Lesson Fee excl GST'].notna()
+            ]
+        else:
+            st.error("Expected 'Student Name' column not found.")
+            feb_data_clean = pd.DataFrame()
 
+        # Show key data only
         with st.expander("📗 Feb 2025 Lessons (Cleaned)"):
             st.dataframe(feb_data_clean.reset_index(drop=True))
 
@@ -145,7 +150,7 @@ elif selected_tab == "Event Profit Summary":
             total_room_hire = feb_data_clean['Room Hire'].astype(float).sum()
             total_gst = feb_data_clean['GST Component'].astype(float).sum()
             net_amount = total_lesson_value - total_room_hire
-
+            
             st.metric("Total Lessons", total_lessons)
             st.metric("Gross Revenue", f"${total_lesson_value:,.2f}")
             st.metric("Room Hire Total", f"${total_room_hire:,.2f}")
