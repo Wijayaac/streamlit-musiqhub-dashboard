@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from io import StringIO
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 
 st.set_page_config(page_title="MusiqHub Dashboard", layout="wide")
 
@@ -15,6 +17,24 @@ st.markdown("""
     th, td { text-align: left !important; padding: 8px; }
 </style>
 """, unsafe_allow_html=True)
+
+# Google Drive Setup
+@st.cache_resource
+def get_drive_service():
+    creds = service_account.Credentials.from_service_account_file(
+        "client_secret_831533717...com.json",  # <-- Update to match your file name
+        scopes=["https://www.googleapis.com/auth/drive.readonly"]
+    )
+    return build("drive", "v3", credentials=creds)
+
+def list_excel_files_from_folder(folder_id):
+    service = get_drive_service()
+    results = service.files().list(
+        q=f"'{folder_id}' in parents and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
+        pageSize=50,
+        fields="files(id, name)"
+    ).execute()
+    return results.get('files', [])
 
 # ---- MusiqHub Dashboard ----
 if selected_tab == "MusiqHub Dashboard":
@@ -114,57 +134,12 @@ if selected_tab == "MusiqHub Dashboard":
 # ---- Event Profit Summary ----
 elif selected_tab == "Event Profit Summary":
     st.title("Event Profit Summary")
-    uploaded_excel = st.file_uploader("Upload Event Profit Excel File", type=["xlsx"], key="event_excel")
 
-    if uploaded_excel:
-        # Only re-process if this is a new file or session state is empty
-        if "event_profit_data" not in st.session_state:
-            xls = pd.ExcelFile(uploaded_excel)
-
-            # Parse sheets
-            support_fee_table = xls.parse(sheet_name="Support Fees")
-            room_hire_table = xls.parse(sheet_name="Room Hire")
-            raw_data = xls.parse(sheet_name="Feb 2025")
-
-            # Save raw data in session
-            st.session_state["event_profit_raw"] = raw_data
-            st.session_state["event_profit_support"] = support_fee_table
-            st.session_state["event_profit_room"] = room_hire_table
-
-            # Extract franchisee list
-            raw_data["Franchisee"] = raw_data["Franchisee"].fillna(method="ffill")
-            franchisees = sorted(raw_data["Franchisee"].unique())
-
-            # Group summary by event
-            grouped = raw_data.groupby(["Franchisee", "Event Name"]).agg({
-                "Student": "count",
-                "Lesson Fee excl GST": "sum",
-                "Room Hire": "sum",
-                "Billed Amount": "sum"
-            }).reset_index()
-
-            grouped.rename(columns={
-                "Student": "Students",
-                "Lesson Fee excl GST": "Lesson Fees",
-                "Room Hire": "Room Hire Total",
-                "Billed Amount": "Total Billed"
-            }, inplace=True)
-
-            # Save processed summary to session state
-            st.session_state["event_profit_data"] = grouped
-            st.session_state["event_profit_franchisees"] = franchisees
-
-    # Display summary if data exists
-    if "event_profit_data" in st.session_state:
-        selected_franchisee = st.sidebar.selectbox(
-            "Filter by Franchisee", ["All"] + st.session_state["event_profit_franchisees"]
-        )
-
-        display_df = st.session_state["event_profit_data"]
-        if selected_franchisee != "All":
-            display_df = display_df[display_df["Franchisee"] == selected_franchisee]
-
-        st.subheader("📊 Event Profit Summary")
-        st.dataframe(display_df.reset_index(drop=True))
+    folder_id = st.text_input("Enter Google Drive Folder ID:", "")
+    if folder_id:
+        files = list_excel_files_from_folder(folder_id)
+        st.write("### Available Files in Folder:")
+        for f in files:
+            st.write(f["name"])
     else:
-        st.warning("Please upload a valid Excel file.")
+        st.info("Paste a Google Drive folder ID above to view files.")
