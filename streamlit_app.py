@@ -8,23 +8,17 @@ st.set_page_config(page_title="MusiqHub Dashboard", layout="wide")
 # Tab selection
 selected_tab = st.sidebar.radio("Select Page", ["MusiqHub Dashboard", "Event Profit Summary"])
 
-# Common CSS for both pages
+# Common CSS
 st.markdown("""
 <style>
-    table {
-        width: 100%;
-    }
-    th, td {
-        text-align: left !important;
-        padding: 8px;
-    }
+    table { width: 100%; }
+    th, td { text-align: left !important; padding: 8px; }
 </style>
 """, unsafe_allow_html=True)
 
-# Page 1: MusiqHub Dashboard
+# ---- MusiqHub Dashboard ----
 if selected_tab == "MusiqHub Dashboard":
     st.title("MusiqHub Franchise Dashboard")
-
     st.sidebar.header("Filters")
     uploaded_file = st.sidebar.file_uploader("Upload CSV", type=["csv"], key="main_csv")
 
@@ -67,9 +61,9 @@ if selected_tab == "MusiqHub Dashboard":
     terms = sorted(df["Term"].unique())
     franchisees = sorted(df["Franchisee"].unique())
 
-    selected_year = st.sidebar.selectbox("Filter by Year", options=["All"] + list(years), index=0)
-    selected_term = st.sidebar.selectbox("Filter by Term", options=["All"] + list(terms), index=0)
-    selected_franchisee = st.sidebar.selectbox("Filter by Franchisee", options=["All"] + list(franchisees), index=0)
+    selected_year = st.sidebar.selectbox("Filter by Year", ["All"] + list(years), index=0)
+    selected_term = st.sidebar.selectbox("Filter by Term", ["All"] + list(terms), index=0)
+    selected_franchisee = st.sidebar.selectbox("Filter by Franchisee", ["All"] + list(franchisees), index=0)
 
     filtered_df = df.copy()
     if selected_year != "All":
@@ -117,44 +111,30 @@ if selected_tab == "MusiqHub Dashboard":
     with st.expander("Gross Profit by Franchisee"):
         st.markdown(filtered_df.groupby("Franchisee").agg({"Gross Profit": "sum"}).reset_index().to_html(index=False), unsafe_allow_html=True)
 
-# Page 2: Event Profit Summary
+# ---- Event Profit Summary ----
 elif selected_tab == "Event Profit Summary":
     st.title("Event Profit Summary")
     uploaded_excel = st.file_uploader("Upload Event Profit Excel File", type=["xlsx"], key="event_excel")
 
     if uploaded_excel:
         xls = pd.ExcelFile(uploaded_excel)
+        try:
+            support_fee_df = xls.parse(sheet_name="Support Fee Table")
+            room_hire_df = xls.parse(sheet_name="Room Hire")
+            lesson_df = xls.parse(sheet_name=2)  # Sheet 3 with raw lesson records
 
-        # Parse all sheets
-        support_fee_table = xls.parse(sheet_name=0)
-        room_hire = xls.parse(sheet_name=1)
-        feb_data = xls.parse(sheet_name=2)
+            with st.expander("Event Lessons"):
+                st.dataframe(lesson_df)
 
-        # Only display cleaned lesson data, skip legends
-        if "Student Name" in feb_data.columns:
-            feb_data_clean = feb_data[
-                feb_data['Student Name'].notna() &
-                feb_data['Lesson Fee excl GST'].notna()
-            ]
-        else:
-            st.error("Expected 'Student Name' column not found.")
-            feb_data_clean = pd.DataFrame()
+            with st.expander("Room Hire Table"):
+                st.dataframe(room_hire_df)
 
-        # Show key data only
-        with st.expander("📗 Feb 2025 Lessons (Cleaned)"):
-            st.dataframe(feb_data_clean.reset_index(drop=True))
+            with st.expander("Support Fee Table"):
+                st.dataframe(support_fee_df)
 
-        with st.expander("📊 Summary Totals"):
-            total_lessons = feb_data_clean.shape[0]
-            total_lesson_value = feb_data_clean['Billed Amount'].astype(float).sum()
-            total_room_hire = feb_data_clean['Room Hire'].astype(float).sum()
-            total_gst = feb_data_clean['GST Component'].astype(float).sum()
-            net_amount = total_lesson_value - total_room_hire
-            
-            st.metric("Total Lessons", total_lessons)
-            st.metric("Gross Revenue", f"${total_lesson_value:,.2f}")
-            st.metric("Room Hire Total", f"${total_room_hire:,.2f}")
-            st.metric("GST Total", f"${total_gst:,.2f}")
-            st.metric("Net Revenue (excl Room & GST)", f"${net_amount:,.2f}")
+            st.info("⚙️ Tiered summary logic and support fee calculations will display here once enabled.")
+
+        except Exception as e:
+            st.error(f"Error processing file: {e}")
     else:
         st.warning("Please upload a valid Excel file.")
