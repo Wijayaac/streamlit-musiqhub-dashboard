@@ -117,24 +117,54 @@ elif selected_tab == "Event Profit Summary":
     uploaded_excel = st.file_uploader("Upload Event Profit Excel File", type=["xlsx"], key="event_excel")
 
     if uploaded_excel:
-        xls = pd.ExcelFile(uploaded_excel)
-        try:
-            support_fee_df = xls.parse(sheet_name="Support Fee Table")
-            room_hire_df = xls.parse(sheet_name="Room Hire")
-            lesson_df = xls.parse(sheet_name=2)  # Sheet 3 with raw lesson records
+        # Only re-process if this is a new file or session state is empty
+        if "event_profit_data" not in st.session_state:
+            xls = pd.ExcelFile(uploaded_excel)
 
-            with st.expander("Event Lessons"):
-                st.dataframe(lesson_df)
+            # Parse sheets
+            support_fee_table = xls.parse(sheet_name="Support Fees")
+            room_hire_table = xls.parse(sheet_name="Room Hire")
+            raw_data = xls.parse(sheet_name="Feb 2025")
 
-            with st.expander("Room Hire Table"):
-                st.dataframe(room_hire_df)
+            # Save raw data in session
+            st.session_state["event_profit_raw"] = raw_data
+            st.session_state["event_profit_support"] = support_fee_table
+            st.session_state["event_profit_room"] = room_hire_table
 
-            with st.expander("Support Fee Table"):
-                st.dataframe(support_fee_df)
+            # Extract franchisee list
+            raw_data["Franchisee"] = raw_data["Franchisee"].fillna(method="ffill")
+            franchisees = sorted(raw_data["Franchisee"].unique())
 
-            st.info("⚙️ Tiered summary logic and support fee calculations will display here once enabled.")
+            # Group summary by event
+            grouped = raw_data.groupby(["Franchisee", "Event Name"]).agg({
+                "Student": "count",
+                "Lesson Fee excl GST": "sum",
+                "Room Hire": "sum",
+                "Billed Amount": "sum"
+            }).reset_index()
 
-        except Exception as e:
-            st.error(f"Error processing file: {e}")
+            grouped.rename(columns={
+                "Student": "Students",
+                "Lesson Fee excl GST": "Lesson Fees",
+                "Room Hire": "Room Hire Total",
+                "Billed Amount": "Total Billed"
+            }, inplace=True)
+
+            # Save processed summary to session state
+            st.session_state["event_profit_data"] = grouped
+            st.session_state["event_profit_franchisees"] = franchisees
+
+    # Display summary if data exists
+    if "event_profit_data" in st.session_state:
+        selected_franchisee = st.sidebar.selectbox(
+            "Filter by Franchisee", ["All"] + st.session_state["event_profit_franchisees"]
+        )
+
+        display_df = st.session_state["event_profit_data"]
+        if selected_franchisee != "All":
+            display_df = display_df[display_df["Franchisee"] == selected_franchisee]
+
+        st.subheader("📊 Event Profit Summary")
+        st.dataframe(display_df.reset_index(drop=True))
     else:
         st.warning("Please upload a valid Excel file.")

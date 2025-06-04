@@ -1,4 +1,4 @@
-streamlit>=1.9.9.9.9.1
+streamlit>=1.9.9.9.9.2
 pandas
 plotly
 openpyxl
