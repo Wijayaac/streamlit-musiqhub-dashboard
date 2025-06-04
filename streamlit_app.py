@@ -4,6 +4,9 @@ import numpy as np
 from io import StringIO
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseDownload
+import io
+import re
 
 st.set_page_config(page_title="MusiqHub Dashboard", layout="wide")
 
@@ -20,9 +23,10 @@ st.markdown("""
 
 # Google Drive Setup
 @st.cache_resource
+
 def get_drive_service():
     creds = service_account.Credentials.from_service_account_file(
-        "client_secret_831533717...com.json",  # <-- Update to match your file name
+        "client_secret_831533717874-iutmhh3utfc4l164s0perusrc62ef4hm.apps.googleusercontent.com.json",
         scopes=["https://www.googleapis.com/auth/drive.readonly"]
     )
     return build("drive", "v3", credentials=creds)
@@ -35,6 +39,17 @@ def list_excel_files_from_folder(folder_id):
         fields="files(id, name)"
     ).execute()
     return results.get('files', [])
+
+def download_excel_file(file_id):
+    service = get_drive_service()
+    request = service.files().get_media(fileId=file_id)
+    fh = io.BytesIO()
+    downloader = MediaIoBaseDownload(fh, request)
+    done = False
+    while done is False:
+        status, done = downloader.next_chunk()
+    fh.seek(0)
+    return fh
 
 # ---- MusiqHub Dashboard ----
 if selected_tab == "MusiqHub Dashboard":
