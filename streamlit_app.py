@@ -1,10 +1,11 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import os
-from io import StringIO
+import json
+import io
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseDownload
 
 st.set_page_config(page_title="MusiqHub Dashboard", layout="wide")
 
@@ -19,12 +20,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Google Drive Setup
+# Google Drive Setup (from secrets)
 @st.cache_resource
 def get_drive_service():
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    creds = service_account.Credentials.from_service_account_file(
-        os.path.join(BASE_DIR, "musiqhub-dashboard-access.json"),
+    service_account_info = st.secrets["gcp_service_account"]
+    creds = service_account.Credentials.from_service_account_info(
+        service_account_info,
         scopes=["https://www.googleapis.com/auth/drive.readonly"]
     )
     return build("drive", "v3", credentials=creds)
@@ -150,8 +151,6 @@ elif selected_tab == "Event Profit Summary":
             if selected_file_id:
                 service = get_drive_service()
                 request = service.files().get_media(fileId=selected_file_id)
-                from googleapiclient.http import MediaIoBaseDownload
-                import io
 
                 fh = io.BytesIO()
                 downloader = MediaIoBaseDownload(fh, request)
