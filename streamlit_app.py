@@ -20,10 +20,9 @@ st.markdown("""
 
 # Google Drive Setup
 @st.cache_resource
-
 def get_drive_service():
     creds = service_account.Credentials.from_service_account_file(
-        "client_secret_831533717874-iutmhh3utfc4l164s0perusrc62ef4hm.apps.googleusercontent.com.json",
+        "musiqhub-dashboard-access.json",  # updated filename
         scopes=["https://www.googleapis.com/auth/drive.readonly"]
     )
     return build("drive", "v3", credentials=creds)
