@@ -159,7 +159,35 @@ elif selected_tab == "Event Profit Summary":
                     status, done = downloader.next_chunk()
 
                 fh.seek(0)
-                df_event = pd.read_excel(fh)
-                st.dataframe(df_event)
+                xls = pd.ExcelFile(fh)
+                df = xls.parse(xls.sheet_names[2])  # Sheet 3 is the event data
+
+                # Ensure required columns exist
+                required_cols = ["Event Name", "Total Students", "Fee Per Student", "Tutor Fee", "Support Fee", "Room Hire"]
+                if all(col in df.columns for col in required_cols):
+                    df["Revenue"] = df["Total Students"] * df["Fee Per Student"]
+                    df["Tutor Cost"] = df["Tutor Fee"]
+                    df["Support Fee Total"] = df["Support Fee"]
+                    df["Room Hire Total"] = df["Room Hire"]
+                    df["MusiqHub Profit"] = df["Revenue"] - df["Tutor Cost"] - df["Support Fee Total"] - df["Room Hire Total"]
+
+                    total_row = pd.DataFrame({
+                        "Event Name": ["Total"],
+                        "Total Students": [df["Total Students"].sum()],
+                        "Fee Per Student": [""],
+                        "Tutor Fee": [df["Tutor Cost"].sum()],
+                        "Support Fee": [df["Support Fee Total"].sum()],
+                        "Room Hire": [df["Room Hire Total"].sum()],
+                        "Revenue": [df["Revenue"].sum()],
+                        "Tutor Cost": [df["Tutor Cost"].sum()],
+                        "Support Fee Total": [df["Support Fee Total"].sum()],
+                        "Room Hire Total": [df["Room Hire Total"].sum()],
+                        "MusiqHub Profit": [df["MusiqHub Profit"].sum()]
+                    })
+
+                    df_display = pd.concat([df, total_row], ignore_index=True)
+                    st.dataframe(df_display)
+                else:
+                    st.error("The required columns are missing in Sheet 3.")
     else:
         st.info("Paste a Google Drive folder ID above to view files.")
