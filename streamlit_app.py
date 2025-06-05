@@ -139,7 +139,27 @@ elif selected_tab == "Event Profit Summary":
     if folder_id:
         files = list_excel_files_from_folder(folder_id)
         st.write("### Available Files in Folder:")
-        for f in files:
-            st.write(f["name"])
+        
+        file_names = [f["name"] for f in files]
+        selected_file = st.selectbox("Choose a file to view:", file_names)
+
+        if selected_file:
+            selected_file_id = next((f["id"] for f in files if f["name"] == selected_file), None)
+            if selected_file_id:
+                service = get_drive_service()
+                request = service.files().get_media(fileId=selected_file_id)
+                from googleapiclient.http import MediaIoBaseDownload
+                import io
+
+                fh = io.BytesIO()
+                downloader = MediaIoBaseDownload(fh, request)
+                done = False
+                while not done:
+                    status, done = downloader.next_chunk()
+
+                fh.seek(0)
+                df_event = pd.read_excel(fh)
+
+                st.dataframe(df_event)
     else:
         st.info("Paste a Google Drive folder ID above to view files.")
