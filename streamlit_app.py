@@ -142,7 +142,7 @@ elif selected_tab == "Event Profit Summary":
     if folder_id:
         files = list_excel_files_from_folder(folder_id)
         st.write("### Available Files in Folder:")
-        
+
         file_names = [f["name"] for f in files]
         selected_file = st.selectbox("Choose a file to view:", file_names)
 
@@ -160,34 +160,32 @@ elif selected_tab == "Event Profit Summary":
 
                 fh.seek(0)
                 xls = pd.ExcelFile(fh)
-                df = xls.parse(xls.sheet_names[2])  # Sheet 3 is the event data
 
-                # Ensure required columns exist
-                required_cols = ["Event Name", "Total Students", "Fee Per Student", "Tutor Fee", "Support Fee", "Room Hire"]
-                if all(col in df.columns for col in required_cols):
-                    df["Revenue"] = df["Total Students"] * df["Fee Per Student"]
-                    df["Tutor Cost"] = df["Tutor Fee"]
-                    df["Support Fee Total"] = df["Support Fee"]
-                    df["Room Hire Total"] = df["Room Hire"]
-                    df["MusiqHub Profit"] = df["Revenue"] - df["Tutor Cost"] - df["Support Fee Total"] - df["Room Hire Total"]
+                df_events = xls.parse(xls.sheet_names[2])
+                df_room = xls.parse("Room Hire")
 
-                    total_row = pd.DataFrame({
-                        "Event Name": ["Total"],
-                        "Total Students": [df["Total Students"].sum()],
-                        "Fee Per Student": [""],
-                        "Tutor Fee": [df["Tutor Cost"].sum()],
-                        "Support Fee": [df["Support Fee Total"].sum()],
-                        "Room Hire": [df["Room Hire Total"].sum()],
-                        "Revenue": [df["Revenue"].sum()],
-                        "Tutor Cost": [df["Tutor Cost"].sum()],
-                        "Support Fee Total": [df["Support Fee Total"].sum()],
-                        "Room Hire Total": [df["Room Hire Total"].sum()],
-                        "MusiqHub Profit": [df["MusiqHub Profit"].sum()]
-                    })
+                df_room["School"] = df_room.iloc[:, 0]
+                df_room["Room Hire"] = df_room.iloc[:, 4]
+                df_room = df_room[["School", "Room Hire"]]
 
-                    df_display = pd.concat([df, total_row], ignore_index=True)
-                    st.dataframe(df_display)
-                else:
-                    st.error("The required columns are missing in Sheet 3.")
+                df_merged = pd.merge(df_events, df_room, how="left", on="School")
+                df_merged["Room Hire"].fillna(0, inplace=True)
+
+                df_merged["Revenue"] = df_merged["Total Students"] * df_merged["Fee Per Student"]
+                df_merged["MusiqHub Profit"] = df_merged["Revenue"] - df_merged["Tutor Fee"] - df_merged["Support Fee"] - df_merged["Room Hire"]
+
+                total_row = pd.DataFrame({
+                    "School": ["Total"],
+                    "Total Students": [df_merged["Total Students"].sum()],
+                    "Fee Per Student": [""],
+                    "Tutor Fee": [df_merged["Tutor Fee"].sum()],
+                    "Support Fee": [df_merged["Support Fee"].sum()],
+                    "Room Hire": [df_merged["Room Hire"].sum()],
+                    "Revenue": [df_merged["Revenue"].sum()],
+                    "MusiqHub Profit": [df_merged["MusiqHub Profit"].sum()]
+                })
+
+                df_display = pd.concat([df_merged, total_row], ignore_index=True)
+                st.dataframe(df_display)
     else:
         st.info("Paste a Google Drive folder ID above to view files.")
