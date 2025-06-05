@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import os
 from io import StringIO
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -21,8 +22,9 @@ st.markdown("""
 # Google Drive Setup
 @st.cache_resource
 def get_drive_service():
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     creds = service_account.Credentials.from_service_account_file(
-        "musiqhub-dashboard-access.json",  # updated filename
+        os.path.join(BASE_DIR, "musiqhub-dashboard-access.json"),
         scopes=["https://www.googleapis.com/auth/drive.readonly"]
     )
     return build("drive", "v3", credentials=creds)
@@ -159,7 +161,6 @@ elif selected_tab == "Event Profit Summary":
 
                 fh.seek(0)
                 df_event = pd.read_excel(fh)
-
                 st.dataframe(df_event)
     else:
         st.info("Paste a Google Drive folder ID above to view files.")
