@@ -164,8 +164,7 @@ elif selected_tab == "Event Profit Summary":
                 df_events = xls.parse(xls.sheet_names[2])
                 df_room = xls.parse("Room Hire")
 
-                df_room["School"] = df_room.iloc[:, 0]
-                df_room["Room Hire"] = df_room.iloc[:, 4]
+                df_room = df_room.rename(columns={df_room.columns[0]: "School", df_room.columns[5]: "Room Hire"})
                 df_room = df_room[["School", "Room Hire"]]
 
                 df_merged = pd.merge(df_events, df_room, how="left", on="School")
