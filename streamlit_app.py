@@ -142,7 +142,6 @@ elif selected_tab == "Event Profit Summary":
     if folder_id:
         files = list_excel_files_from_folder(folder_id)
         st.write("### Available Files in Folder:")
-
         file_names = [f["name"] for f in files]
         selected_file = st.selectbox("Choose a file to view:", file_names)
 
@@ -161,30 +160,42 @@ elif selected_tab == "Event Profit Summary":
                 fh.seek(0)
                 xls = pd.ExcelFile(fh)
 
-                df_events = xls.parse(xls.sheet_names[2])
+                # Read Room Hire sheet
                 df_room = xls.parse("Room Hire")
+                df_room = df_room.rename(columns={df_room.columns[1]: "Description", df_room.columns[5]: "Room Rate Per Student"})
+                df_room = df_room[["Description", "Room Rate Per Student"]]
+                df_room["Description"] = df_room["Description"].str.lower().str.strip()
+                df_room["Room Rate Per Student"] = df_room["Room Rate Per Student"].replace('[\$,]', '', regex=True).astype(float)
 
-                df_room = df_room.rename(columns={df_room.columns[0]: "School", df_room.columns[5]: "Room Hire"})
-                df_room = df_room[["School", "Room Hire"]]
+                # Read Event sheet (sheet 3)
+                df_events = xls.parse(xls.sheet_names[2])
+                df_events["Description"] = df_events["Description"].ffill().str.lower().str.strip()
+                df_events["Billed Amount"] = df_events["Billed Amount"].replace('[\$,]', '', regex=True).astype(float)
 
-                df_merged = pd.merge(df_events, df_room, how="left", on="School")
-                df_merged["Room Hire"].fillna(0, inplace=True)
+                # Count students and billed amounts
+                summary = df_events.groupby("Description").agg(
+                    Total_Students=("Student Name", "count"),
+                    Total_Billed_Amount=("Billed Amount", "sum")
+                ).reset_index()
 
-                df_merged["Revenue"] = df_merged["Total Students"] * df_merged["Fee Per Student"]
-                df_merged["MusiqHub Profit"] = df_merged["Revenue"] - df_merged["Tutor Fee"] - df_merged["Support Fee"] - df_merged["Room Hire"]
+                # Merge room rate info
+                summary = pd.merge(summary, df_room, on="Description", how="left")
+                summary["Room Rate Per Student"] = summary["Room Rate Per Student"].fillna(0.0)
 
-                total_row = pd.DataFrame({
-                    "School": ["Total"],
-                    "Total Students": [df_merged["Total Students"].sum()],
-                    "Fee Per Student": [""],
-                    "Tutor Fee": [df_merged["Tutor Fee"].sum()],
-                    "Support Fee": [df_merged["Support Fee"].sum()],
-                    "Room Hire": [df_merged["Room Hire"].sum()],
-                    "Revenue": [df_merged["Revenue"].sum()],
-                    "MusiqHub Profit": [df_merged["MusiqHub Profit"].sum()]
-                })
+                # Calculate total room hire and profit
+                summary["Total_Room_Hire"] = summary["Total_Students"] * summary["Room Rate Per Student"]
+                summary["Profit"] = summary["Total_Billed_Amount"] - summary["Total_Room_Hire"]
 
-                df_display = pd.concat([df_merged, total_row], ignore_index=True)
-                st.dataframe(df_display)
+                # Round to 2 decimal places
+                summary[["Total_Billed_Amount", "Total_Room_Hire", "Profit"]] = summary[["Total_Billed_Amount", "Total_Room_Hire", "Profit"]].round(2)
+
+                st.subheader("School Profit Summary")
+                st.dataframe(summary.reset_index(drop=True).rename(columns={
+                    "Description": "School",
+                    "Total_Students": "Total Students",
+                    "Total_Billed_Amount": "Total Billed ($)",
+                    "Total_Room_Hire": "Total Room Hire ($)",
+                    "Profit": "Net Profit ($)"
+                }))
     else:
         st.info("Paste a Google Drive folder ID above to view files.")
