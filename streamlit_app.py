@@ -142,6 +142,7 @@ elif selected_tab == "Event Profit Summary":
     if folder_id:
         files = list_excel_files_from_folder(folder_id)
         st.write("### Available Files in Folder:")
+
         file_names = [f["name"] for f in files]
         selected_file = st.selectbox("Choose a file to view:", file_names)
 
@@ -160,42 +161,47 @@ elif selected_tab == "Event Profit Summary":
                 fh.seek(0)
                 xls = pd.ExcelFile(fh)
 
-                # Read Room Hire sheet
-                df_room = xls.parse("Room Hire")
-                df_room = df_room.rename(columns={df_room.columns[1]: "Description", df_room.columns[5]: "Room Rate Per Student"})
+                # Sheet 1: Room Hire (first sheet)
+                df_room = xls.parse(xls.sheet_names[0])
+                df_room.columns = df_room.columns.str.strip()
+                df_room = df_room.rename(columns={
+                    df_room.columns[1]: "Description",
+                    df_room.columns[4]: "Room Rate Per Student"
+                })
                 df_room = df_room[["Description", "Room Rate Per Student"]]
-                df_room["Description"] = df_room["Description"].str.lower().str.strip()
+                df_room["Description"] = df_room["Description"].astype(str).str.lower().str.strip()
                 df_room["Room Rate Per Student"] = df_room["Room Rate Per Student"].replace('[\$,]', '', regex=True).astype(float)
 
-                # Read Event sheet (sheet 3)
+                # Sheet 3: Events (third sheet)
                 df_events = xls.parse(xls.sheet_names[2])
-                df_events["Description"] = df_events["Description"].ffill().str.lower().str.strip()
+                df_events.columns = df_events.columns.str.strip()
+                df_events = df_events.rename(columns={
+                    "Description": "Description",
+                    "Billed Amount": "Billed Amount"
+                })
+                df_events = df_events[["Description", "Billed Amount"]]
+                df_events["Description"] = df_events["Description"].astype(str).str.lower().str.strip()
                 df_events["Billed Amount"] = df_events["Billed Amount"].replace('[\$,]', '', regex=True).astype(float)
 
-                # Count students and billed amounts
-                summary = df_events.groupby("Description").agg(
-                    Total_Students=("Student Name", "count"),
-                    Total_Billed_Amount=("Billed Amount", "sum")
+                # Merge room hire into event data
+                df = pd.merge(df_events, df_room, how="left", on="Description")
+                df["Room Rate Per Student"] = df["Room Rate Per Student"].fillna(0)
+                df["Profit"] = df["Billed Amount"] - df["Room Rate Per Student"]
+
+                # Group by school (description)
+                summary = df.groupby("Description").agg(
+                    Total_Students=('Billed Amount', 'count'),
+                    Total_Billed_Amount=('Billed Amount', 'sum'),
+                    Total_Room_Hire=('Room Rate Per Student', lambda x: x.sum()),
+                    Total_Profit=('Profit', 'sum')
                 ).reset_index()
 
-                # Merge room rate info
-                summary = pd.merge(summary, df_room, on="Description", how="left")
-                summary["Room Rate Per Student"] = summary["Room Rate Per Student"].fillna(0.0)
-
-                # Calculate total room hire and profit
-                summary["Total_Room_Hire"] = summary["Total_Students"] * summary["Room Rate Per Student"]
-                summary["Profit"] = summary["Total_Billed_Amount"] - summary["Total_Room_Hire"]
-
-                # Round to 2 decimal places
-                summary[["Total_Billed_Amount", "Total_Room_Hire", "Profit"]] = summary[["Total_Billed_Amount", "Total_Room_Hire", "Profit"]].round(2)
+                # Round everything
+                summary["Total_Billed_Amount"] = summary["Total_Billed_Amount"].round(2)
+                summary["Total_Room_Hire"] = summary["Total_Room_Hire"].round(2)
+                summary["Total_Profit"] = summary["Total_Profit"].round(2)
 
                 st.subheader("School Profit Summary")
-                st.dataframe(summary.reset_index(drop=True).rename(columns={
-                    "Description": "School",
-                    "Total_Students": "Total Students",
-                    "Total_Billed_Amount": "Total Billed ($)",
-                    "Total_Room_Hire": "Total Room Hire ($)",
-                    "Profit": "Net Profit ($)"
-                }))
+                st.dataframe(summary.reset_index(drop=True).rename_axis("#").reset_index())
     else:
         st.info("Paste a Google Drive folder ID above to view files.")
