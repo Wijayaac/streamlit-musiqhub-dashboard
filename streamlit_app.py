@@ -159,44 +159,44 @@ elif selected_tab == "Event Profit Summary":
                     status, done = downloader.next_chunk()
 
                 fh.seek(0)
-                xls = pd.ExcelFile(fh)
+
+                try:
+                    xls = pd.ExcelFile(fh)
+                except Exception as e:
+                    st.error(f"Error reading Excel file: {e}")
+                    st.stop()
 
                 df_room = xls.parse(xls.sheet_names[1])
                 df_room.columns = df_room.columns.str.strip()
-                df_room = df_room.rename(columns={
-                    df_room.columns[0]: "Description",
-                    df_room.columns[4]: "Room Rate Per Student"
-                })
+                df_room = df_room.rename(columns={df_room.columns[0]: "Description", df_room.columns[1]: "Room Rate Per Student"})
                 df_room = df_room[["Description", "Room Rate Per Student"]]
                 df_room["Description"] = df_room["Description"].astype(str).str.lower().str.strip()
-                df_room["Room Rate Per Student"] = df_room["Room Rate Per Student"].replace('[\$,]', '', regex=True).astype(float)
+                df_room["Room Rate Per Student"] = df_room["Room Rate Per Student"].replace(r'[\$,]', '', regex=True).astype(float)
 
                 df_events = xls.parse(xls.sheet_names[2])
                 df_events.columns = df_events.columns.str.strip()
-                df_events = df_events.rename(columns={
-                    "Event Date": "Event Date",
-                    "Description": "Description",
-                    "Billed Amount": "Billed Amount"
-                })
-                df_events = df_events[["Event Date", "Description", "Billed Amount"]].dropna(subset=["Billed Amount"])
-                df_events["Event Date"] = df_events["Event Date"].ffill()
-                df_events["Description"] = df_events["Description"].ffill()
+                df_events = df_events[["Date", "Description", "Billed Amount"]]
+                df_events = df_events.ffill()
+                df_events = df_events[df_events["Billed Amount"].notnull()]
                 df_events["Description"] = df_events["Description"].astype(str).str.lower().str.strip()
-                df_events["Billed Amount"] = df_events["Billed Amount"].replace('[\$,]', '', regex=True).astype(float)
+                df_events["Billed Amount"] = df_events["Billed Amount"].replace(r'[\$,]', '', regex=True).astype(float)
 
                 df = pd.merge(df_events, df_room, how="left", on="Description")
                 df["Room Rate Per Student"] = df["Room Rate Per Student"].fillna(0)
                 df["Profit"] = df["Billed Amount"] - df["Room Rate Per Student"]
 
-                summary = df.groupby("Description").agg(
+                summary = df.groupby("Date").agg(
                     Total_Students=('Billed Amount', 'count'),
                     Total_Billed_Amount=('Billed Amount', 'sum'),
                     Total_Room_Hire=('Room Rate Per Student', 'sum'),
                     Total_Profit=('Profit', 'sum')
                 ).reset_index()
 
-                summary = summary.round(2)
-                st.subheader("School Profit Summary")
+                summary["Total_Billed_Amount"] = summary["Total_Billed_Amount"].round(2)
+                summary["Total_Room_Hire"] = summary["Total_Room_Hire"].round(2)
+                summary["Total_Profit"] = summary["Total_Profit"].round(2)
+
+                st.subheader("Event Profit Summary by Date")
                 st.dataframe(summary.reset_index(drop=True).rename_axis("#").reset_index())
     else:
         st.info("Paste a Google Drive folder ID above to view files.")
