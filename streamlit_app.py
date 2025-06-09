@@ -171,15 +171,29 @@ elif selected_tab == "Event Profit Summary":
                 df_room = df_room.rename(columns={df_room.columns[0]: "Description", df_room.columns[1]: "Room Rate Per Student"})
                 df_room = df_room[["Description", "Room Rate Per Student"]]
                 df_room["Description"] = df_room["Description"].astype(str).str.lower().str.strip()
-                df_room["Room Rate Per Student"] = df_room["Room Rate Per Student"].astype(str).str.extract(r'([\d\.]+)').astype(float)
+                df_room["Room Rate Per Student"] = df_room["Room Rate Per Student"].astype(str).str.extract(r'(\d+\.\d+|\d+)')[0].astype(float)
 
                 df_events = xls.parse(xls.sheet_names[2])
-                df_events.columns = df_events.columns.str.strip()
-                df_events = df_events[["Date", "Description", "Billed Amount"]]
+                df_events.columns = df_events.columns.str.strip().str.lower()
+
+                column_renames = {
+                    "event date": "Date",
+                    "date": "Date",
+                    "description": "Description",
+                    "billed amount": "Billed Amount"
+                }
+                df_events.rename(columns=column_renames, inplace=True)
+
+                expected_cols = ["Date", "Description", "Billed Amount"]
+                if not all(col in df_events.columns for col in expected_cols):
+                    st.error(f"Expected columns {expected_cols} not found. Current columns: {list(df_events.columns)}")
+                    st.stop()
+
+                df_events = df_events[expected_cols]
                 df_events = df_events.ffill()
                 df_events = df_events[df_events["Billed Amount"].notnull()]
                 df_events["Description"] = df_events["Description"].astype(str).str.lower().str.strip()
-                df_events["Billed Amount"] = df_events["Billed Amount"].astype(str).str.extract(r'([\d\.]+)').astype(float)
+                df_events["Billed Amount"] = df_events["Billed Amount"].astype(str).str.extract(r'(\d+\.\d+|\d+)')[0].astype(float)
 
                 df = pd.merge(df_events, df_room, how="left", on="Description")
                 df["Room Rate Per Student"] = df["Room Rate Per Student"].fillna(0)
