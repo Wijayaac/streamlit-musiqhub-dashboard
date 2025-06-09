@@ -199,8 +199,8 @@ elif selected_tab == "Event Profit Summary":
                 df["Room Rate Per Student"] = df["Room Rate Per Student"].fillna(0)
                 df["Profit"] = df["Billed Amount"] - df["Room Rate Per Student"]
 
-                summary = df.groupby("Date").agg(
-                    Total_Students=('Billed Amount', 'count'),
+                summary = df.groupby("Description").agg(
+                    Total_Events=('Billed Amount', 'count'),
                     Total_Billed_Amount=('Billed Amount', 'sum'),
                     Total_Room_Hire=('Room Rate Per Student', 'sum'),
                     Total_Profit=('Profit', 'sum')
@@ -210,7 +210,7 @@ elif selected_tab == "Event Profit Summary":
                 summary["Total_Room_Hire"] = summary["Total_Room_Hire"].round(2)
                 summary["Total_Profit"] = summary["Total_Profit"].round(2)
 
-                st.subheader("Event Profit Summary by Date")
+                st.subheader("Event Profit Summary by Description")
                 st.dataframe(summary.reset_index(drop=True).rename_axis("#").reset_index())
     else:
         st.info("Paste a Google Drive folder ID above to view files.")
