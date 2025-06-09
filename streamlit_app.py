@@ -161,10 +161,10 @@ elif selected_tab == "Event Profit Summary":
                 fh.seek(0)
                 xls = pd.ExcelFile(fh)
 
-                df_room = xls.parse(xls.sheet_names[0])
+                df_room = xls.parse(xls.sheet_names[1])
                 df_room.columns = df_room.columns.str.strip()
                 df_room = df_room.rename(columns={
-                    df_room.columns[1]: "Description",
+                    df_room.columns[0]: "Description",
                     df_room.columns[4]: "Room Rate Per Student"
                 })
                 df_room = df_room[["Description", "Room Rate Per Student"]]
@@ -174,10 +174,13 @@ elif selected_tab == "Event Profit Summary":
                 df_events = xls.parse(xls.sheet_names[2])
                 df_events.columns = df_events.columns.str.strip()
                 df_events = df_events.rename(columns={
+                    "Event Date": "Event Date",
                     "Description": "Description",
                     "Billed Amount": "Billed Amount"
                 })
-                df_events = df_events[["Description", "Billed Amount"]]
+                df_events = df_events[["Event Date", "Description", "Billed Amount"]].dropna(subset=["Billed Amount"])
+                df_events["Event Date"] = df_events["Event Date"].ffill()
+                df_events["Description"] = df_events["Description"].ffill()
                 df_events["Description"] = df_events["Description"].astype(str).str.lower().str.strip()
                 df_events["Billed Amount"] = df_events["Billed Amount"].replace('[\$,]', '', regex=True).astype(float)
 
@@ -192,10 +195,7 @@ elif selected_tab == "Event Profit Summary":
                     Total_Profit=('Profit', 'sum')
                 ).reset_index()
 
-                summary["Total_Billed_Amount"] = summary["Total_Billed_Amount"].round(2)
-                summary["Total_Room_Hire"] = summary["Total_Room_Hire"].round(2)
-                summary["Total_Profit"] = summary["Total_Profit"].round(2)
-
+                summary = summary.round(2)
                 st.subheader("School Profit Summary")
                 st.dataframe(summary.reset_index(drop=True).rename_axis("#").reset_index())
     else:

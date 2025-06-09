@@ -1,4 +1,4 @@
-streamlit>=1.26.7
+streamlit>=1.26.8
 pandas
 plotly
 openpyxl
