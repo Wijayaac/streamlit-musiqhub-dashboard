@@ -137,7 +137,6 @@ elif selected_tab == "Event Profit Summary":
     if folder_id:
         files = list_excel_files_from_folder(folder_id)
         st.write("### Available Files in Folder:")
-
         file_names = [f["name"] for f in files]
         selected_file = st.selectbox("Choose a file to view:", file_names)
 
@@ -146,13 +145,10 @@ elif selected_tab == "Event Profit Summary":
             if selected_file_id:
                 service = get_drive_service()
                 request = service.files().get_media(fileId=selected_file_id)
-
                 fh = io.BytesIO()
                 downloader = MediaIoBaseDownload(fh, request)
-                done = False
-                while not done:
-                    status, done = downloader.next_chunk()
-
+                while not downloader.next_chunk()[1]:
+                    pass
                 fh.seek(0)
 
                 try:
@@ -161,6 +157,7 @@ elif selected_tab == "Event Profit Summary":
                     st.error(f"Error reading Excel file: {e}")
                     st.stop()
 
+                # Sheet 2: Room rates
                 df_room = xls.parse(xls.sheet_names[1])
                 df_room.columns = df_room.columns.str.strip()
                 df_room = df_room.rename(columns={df_room.columns[0]: "Description", df_room.columns[3]: "Room Rate"})
@@ -168,28 +165,39 @@ elif selected_tab == "Event Profit Summary":
                 df_room["Description"] = df_room["Description"].astype(str).str.lower().str.strip()
                 df_room["Room Rate"] = df_room["Room Rate"].astype(str).str.extract(r'(\d+\.\d+|\d+)')[0].astype(float)
 
-                df_events = xls.parse(xls.sheet_names[2])
-                df_events.columns = df_events.columns.str.strip().str.lower()
-                df_events.rename(columns={"event date": "Date", "description": "Description", "billed amount": "Billed Amount"}, inplace=True)
-                df_events = df_events[["Date", "Description", "Billed Amount"]]
-                df_events["Description"] = df_events["Description"].astype(str).str.lower().str.strip()
+                # Sheet 3: Events and Students
+                df_events = xls.parse(xls.sheet_names[2], header=None)
+                df_events.columns = ["Col1", "Col2", "Col3", "Col4"][:len(df_events.columns)]
+                df_events = df_events.fillna("")
 
                 events = []
                 i = 0
                 while i < len(df_events):
-                    if pd.notnull(df_events.loc[i, "Billed Amount"]):
-                        event = {
-                            "Date": df_events.loc[i, "Date"],
-                            "Description": df_events.loc[i, "Description"],
-                            "Billed Amount": float(str(df_events.loc[i, "Billed Amount"]).strip().replace("$", "").replace(",", "")),
-                        }
+                    desc = str(df_events.loc[i, "Col1"]).strip().lower()
+                    date = str(df_events.loc[i, "Col2"]).strip()
+                    billed = str(df_events.loc[i, "Col3"]).strip()
+
+                    if desc and billed:
+                        try:
+                            billed_amount = float(billed.replace("$", "").replace(",", ""))
+                        except:
+                            i += 1
+                            continue
+
                         j = i + 1
                         student_count = 0
-                        while j < len(df_events) and pd.isnull(df_events.loc[j, "Billed Amount"]):
-                            student_count += 1
+                        while j < len(df_events) and not str(df_events.loc[j, "Col3"]).strip():
+                            student_name = str(df_events.loc[j, "Col1"]).strip()
+                            if student_name:
+                                student_count += 1
                             j += 1
-                        event["Student Count"] = student_count
-                        events.append(event)
+
+                        events.append({
+                            "Description": desc,
+                            "Date": date,
+                            "Billed Amount": billed_amount,
+                            "Student Count": student_count
+                        })
                         i = j
                     else:
                         i += 1
@@ -209,9 +217,8 @@ elif selected_tab == "Event Profit Summary":
                     Total_Profit=("Profit", "sum")
                 ).reset_index()
 
-                summary["Total_Billed_Amount"] = summary["Total_Billed_Amount"].round(2)
-                summary["Total_Room_Hire"] = summary["Total_Room_Hire"].round(2)
-                summary["Total_Profit"] = summary["Total_Profit"].round(2)
+                for col in ["Total_Billed_Amount", "Total_Room_Hire", "Total_Profit"]:
+                    summary[col] = summary[col].round(2)
 
                 st.subheader("Event Profit Summary by Description")
                 st.dataframe(summary)
