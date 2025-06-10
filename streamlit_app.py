@@ -167,8 +167,12 @@ elif selected_tab == "Event Profit Summary":
                     st.stop()
 
                 df_room = xls.parse(xls.sheet_names[1])
-                df_room.columns = df_room.columns.str.strip()
-                df_room = df_room.rename(columns={df_room.columns[0]: "Description", df_room.columns[4]: "Room Rate Per Student"})
+                df_room.columns = df_room.columns.str.strip().str.lower()
+                column_renames_room = {
+                    "description": "Description",
+                    "room rate per student": "Room Rate Per Student"
+                }
+                df_room.rename(columns=column_renames_room, inplace=True)
                 df_room = df_room[["Description", "Room Rate Per Student"]]
                 df_room["Description"] = df_room["Description"].astype(str).str.lower().str.strip()
                 df_room["Room Rate Per Student"] = df_room["Room Rate Per Student"].astype(str).str.extract(r'(\d+\.\d+|\d+)')[0].astype(float)
