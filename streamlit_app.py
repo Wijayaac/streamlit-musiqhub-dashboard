@@ -157,69 +157,76 @@ elif selected_tab == "Event Profit Summary":
                     st.error(f"Error reading Excel file: {e}")
                     st.stop()
 
-                # Sheet 2: Room rates
-                df_room = xls.parse(xls.sheet_names[1])
-                df_room.columns = df_room.columns.str.strip()
-                df_room = df_room.rename(columns={df_room.columns[0]: "Description", df_room.columns[3]: "Room Rate"})
-                df_room = df_room[["Description", "Room Rate"]]
-                df_room["Description"] = df_room["Description"].astype(str).str.lower().str.strip()
-                df_room["Room Rate"] = df_room["Room Rate"].astype(str).str.extract(r'(\d+\.\d+|\d+)')[0].astype(float)
+                def process_event_profit_summary(xls):
+                    df_room = xls.parse(xls.sheet_names[1])
+                    df_room.columns = df_room.columns.str.strip()
+                    df_room = df_room.rename(columns={df_room.columns[0]: "Description", df_room.columns[3]: "Room Rate"})
+                    df_room = df_room[["Description", "Room Rate"]]
+                    df_room["Description"] = df_room["Description"].astype(str).str.lower().str.strip()
+                    df_room["Room Rate"] = df_room["Room Rate"].astype(str).str.extract(r'(\d+\.\d+|\d+)')[0].astype(float)
 
-                # Sheet 3: Events and Students
-                df_events = xls.parse(xls.sheet_names[2], header=None)
-                df_events.columns = [f"Col{i+1}" for i in range(len(df_events.columns))]
-                df_events = df_events.fillna("")
+                    df_events = xls.parse(xls.sheet_names[2], header=None)
+                    df_events.columns = [f"Col{i+1}" for i in range(len(df_events.columns))]
+                    df_events = df_events.fillna("")
 
-                events = []
-                i = 0
-                while i < len(df_events):
-                    desc = str(df_events.loc[i, "Col1"]).strip().lower()
-                    date = str(df_events.loc[i, "Col2"]).strip()
-                    billed = str(df_events.loc[i, "Col3"]).strip()
+                    events = []
+                    i = 0
+                    while i < len(df_events):
+                        desc = str(df_events.loc[i, "Col1"]).strip().lower()
+                        date = str(df_events.loc[i, "Col2"]).strip()
+                        billed = str(df_events.loc[i, "Col3"]).strip()
 
-                    if desc and billed:
-                        try:
-                            billed_amount = float(billed.replace("$", "").replace(",", ""))
-                        except:
+                        if desc and billed and billed.startswith("$"):
+                            try:
+                                billed_amount = float(billed.replace("$", "").replace(",", ""))
+                            except:
+                                i += 1
+                                continue
+
+                            j = i + 1
+                            student_count = 0
+                            while j < len(df_events) and not str(df_events.loc[j, "Col3"]).strip():
+                                student_name = str(df_events.loc[j, "Col1"]).strip()
+                                if student_name:
+                                    student_count += 1
+                                j += 1
+
+                            if student_count > 0:
+                                events.append({
+                                    "Description": desc,
+                                    "Date": date,
+                                    "Billed Amount": billed_amount,
+                                    "Student Count": student_count
+                                })
+                            i = j
+                        else:
                             i += 1
-                            continue
 
-                        j = i + 1
-                        student_count = 0
-                        while j < len(df_events) and not str(df_events.loc[j, "Col3"]).strip():
-                            student_name = str(df_events.loc[j, "Col1"]).strip()
-                            if student_name:
-                                student_count += 1
-                            j += 1
+                    df_summary = pd.DataFrame(events)
+                    if "Description" not in df_summary.columns:
+                        st.error("Missing 'Description' column in events data.")
+                        st.stop()
 
-                        events.append({
-                            "Description": desc,
-                            "Date": date,
-                            "Billed Amount": billed_amount,
-                            "Student Count": student_count
-                        })
-                        i = j
-                    else:
-                        i += 1
+                    df_summary = df_summary.merge(df_room, on="Description", how="left")
+                    df_summary["Room Rate"] = df_summary["Room Rate"].fillna(0)
+                    df_summary["Room Rate Per Student"] = df_summary["Room Rate"] / df_summary["Student Count"]
+                    df_summary["Room Hire"] = df_summary["Room Rate Per Student"] * df_summary["Student Count"]
+                    df_summary["Profit"] = df_summary["Billed Amount"] - df_summary["Room Hire"]
 
-                df_summary = pd.DataFrame(events)
-                df_summary = df_summary.merge(df_room, on="Description", how="left")
-                df_summary["Room Rate"] = df_summary["Room Rate"].fillna(0)
-                df_summary["Room Rate Per Student"] = df_summary["Room Rate"] / df_summary["Student Count"]
-                df_summary["Room Hire"] = df_summary["Room Rate Per Student"] * df_summary["Student Count"]
-                df_summary["Profit"] = df_summary["Billed Amount"] - df_summary["Room Hire"]
+                    summary = df_summary.groupby("Description").agg(
+                        Total_Events=("Date", "count"),
+                        Total_Students=("Student Count", "sum"),
+                        Total_Billed_Amount=("Billed Amount", "sum"),
+                        Total_Room_Hire=("Room Hire", "sum"),
+                        Total_Profit=("Profit", "sum")
+                    ).reset_index()
 
-                summary = df_summary.groupby("Description").agg(
-                    Total_Events=("Date", "count"),
-                    Total_Students=("Student Count", "sum"),
-                    Total_Billed_Amount=("Billed Amount", "sum"),
-                    Total_Room_Hire=("Room Hire", "sum"),
-                    Total_Profit=("Profit", "sum")
-                ).reset_index()
+                    for col in ["Total_Billed_Amount", "Total_Room_Hire", "Total_Profit"]:
+                        summary[col] = summary[col].round(2)
 
-                for col in ["Total_Billed_Amount", "Total_Room_Hire", "Total_Profit"]:
-                    summary[col] = summary[col].round(2)
+                    return summary
 
+                summary = process_event_profit_summary(xls)
                 st.subheader("Event Profit Summary by Description")
                 st.dataframe(summary)
     else:
