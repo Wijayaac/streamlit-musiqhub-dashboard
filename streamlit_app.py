@@ -167,19 +167,16 @@ elif selected_tab == "Event Profit Summary":
                     st.stop()
 
                 df_room = xls.parse(xls.sheet_names[1])
-                df_room.columns = df_room.columns.str.strip().str.lower()
+                df_room.columns = df_room.columns.str.strip()
 
-                desc_col = next((col for col in df_room.columns if "description" in col), None)
-                rate_col = next((col for col in df_room.columns if "rate" in col and "student" in col), None)
+                df_room = df_room.rename(columns={
+                    df_room.columns[0]: "Description",
+                    df_room.columns[3]: "Room Rate"
+                })
 
-                if not desc_col or not rate_col:
-                    st.error(f"Could not find required columns in Sheet 2. Found columns: {list(df_room.columns)}")
-                    st.stop()
-
-                df_room = df_room.rename(columns={desc_col: "Description", rate_col: "Room Rate Per Student"})
-                df_room = df_room[["Description", "Room Rate Per Student"]]
+                df_room = df_room[["Description", "Room Rate"]]
                 df_room["Description"] = df_room["Description"].astype(str).str.lower().str.strip()
-                df_room["Room Rate Per Student"] = df_room["Room Rate Per Student"].astype(str).str.extract(r'(\d+\.\d+|\d+)')[0].astype(float)
+                df_room["Room Rate"] = df_room["Room Rate"].astype(str).str.extract(r'(\d+\.\d+|\d+)')[0].astype(float)
 
                 df_events = xls.parse(xls.sheet_names[2])
                 df_events.columns = df_events.columns.str.strip().str.lower()
@@ -190,12 +187,14 @@ elif selected_tab == "Event Profit Summary":
                 df_events["Description"] = df_events["Description"].astype(str).str.lower().str.strip()
                 df_events["Billed Amount"] = df_events["Billed Amount"].astype(str).str.extract(r'(\d+\.\d+|\d+)')[0].astype(float)
 
-                event_counts = df_events.groupby(["Date", "Description"]).size().reset_index(name="Student Count")
-                df_events = pd.merge(df_events, event_counts, on=["Date", "Description"], how="left")
+                df_events["Student Count"] = df_events.groupby(["Date", "Description"]).cumcount() + 1
+                latest_counts = df_events.groupby(["Date", "Description"]).agg(Student_Count=("Student Count", "max")).reset_index()
 
-                df = pd.merge(df_events, df_room, how="left", on="Description")
-                df["Room Rate Per Student"] = df["Room Rate Per Student"].fillna(0)
-                df["Room Hire"] = df["Room Rate Per Student"] * df["Student Count"]
+                df = pd.merge(df_events.drop(columns=["Student Count"]), latest_counts, on=["Date", "Description"], how="left")
+                df = pd.merge(df, df_room, how="left", on="Description")
+                df["Room Rate"] = df["Room Rate"].fillna(0)
+                df["Room Rate Per Student"] = df["Room Rate"] / df["Student_Count"]
+                df["Room Hire"] = df["Room Rate Per Student"] * df["Student_Count"]
                 df["Profit"] = df["Billed Amount"] - df["Room Hire"]
 
                 summary = df.groupby("Description").agg(
