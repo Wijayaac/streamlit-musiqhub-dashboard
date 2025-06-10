@@ -167,7 +167,7 @@ elif selected_tab == "Event Profit Summary":
 
                 # Sheet 3: Events and Students
                 df_events = xls.parse(xls.sheet_names[2], header=None)
-                df_events.columns = ["Col1", "Col2", "Col3", "Col4"][:len(df_events.columns)]
+                df_events.columns = [f"Col{i+1}" for i in range(len(df_events.columns))]
                 df_events = df_events.fillna("")
 
                 events = []
