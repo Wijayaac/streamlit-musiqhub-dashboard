@@ -9,10 +9,8 @@ from googleapiclient.http import MediaIoBaseDownload
 
 st.set_page_config(page_title="MusiqHub Dashboard", layout="wide")
 
-# Tab selection
 selected_tab = st.sidebar.radio("Select Page", ["MusiqHub Dashboard", "Event Profit Summary"])
 
-# Common CSS
 st.markdown("""
 <style>
     table { width: 100%; }
@@ -20,7 +18,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Google Drive Setup (from secrets)
 @st.cache_resource
 def get_drive_service():
     service_account_info = st.secrets["gcp_service_account"]
@@ -39,7 +36,6 @@ def list_excel_files_from_folder(folder_id):
     ).execute()
     return results.get('files', [])
 
-# ---- MusiqHub Dashboard ----
 if selected_tab == "MusiqHub Dashboard":
     st.title("MusiqHub Franchise Dashboard")
     st.sidebar.header("Filters")
@@ -134,7 +130,6 @@ if selected_tab == "MusiqHub Dashboard":
     with st.expander("Gross Profit by Franchisee"):
         st.markdown(filtered_df.groupby("Franchisee").agg({"Gross Profit": "sum"}).reset_index().to_html(index=False), unsafe_allow_html=True)
 
-# ---- Event Profit Summary ----
 elif selected_tab == "Event Profit Summary":
     st.title("Event Profit Summary")
 
@@ -168,12 +163,7 @@ elif selected_tab == "Event Profit Summary":
 
                 df_room = xls.parse(xls.sheet_names[1])
                 df_room.columns = df_room.columns.str.strip()
-
-                df_room = df_room.rename(columns={
-                    df_room.columns[0]: "Description",
-                    df_room.columns[3]: "Room Rate"
-                })
-
+                df_room = df_room.rename(columns={df_room.columns[0]: "Description", df_room.columns[3]: "Room Rate"})
                 df_room = df_room[["Description", "Room Rate"]]
                 df_room["Description"] = df_room["Description"].astype(str).str.lower().str.strip()
                 df_room["Room Rate"] = df_room["Room Rate"].astype(str).str.extract(r'(\d+\.\d+|\d+)')[0].astype(float)
@@ -182,26 +172,41 @@ elif selected_tab == "Event Profit Summary":
                 df_events.columns = df_events.columns.str.strip().str.lower()
                 df_events.rename(columns={"event date": "Date", "description": "Description", "billed amount": "Billed Amount"}, inplace=True)
                 df_events = df_events[["Date", "Description", "Billed Amount"]]
-                df_events = df_events.ffill()
-                df_events = df_events[df_events["Billed Amount"].notnull()]
                 df_events["Description"] = df_events["Description"].astype(str).str.lower().str.strip()
-                df_events["Billed Amount"] = df_events["Billed Amount"].astype(str).str.extract(r'(\d+\.\d+|\d+)')[0].astype(float)
 
-                df_events["Student Count"] = df_events.groupby(["Date", "Description"]).cumcount() + 1
-                latest_counts = df_events.groupby(["Date", "Description"]).agg(Student_Count=("Student Count", "max")).reset_index()
+                events = []
+                i = 0
+                while i < len(df_events):
+                    if pd.notnull(df_events.loc[i, "Billed Amount"]):
+                        event = {
+                            "Date": df_events.loc[i, "Date"],
+                            "Description": df_events.loc[i, "Description"],
+                            "Billed Amount": float(str(df_events.loc[i, "Billed Amount"]).strip().replace("$", "").replace(",", "")),
+                        }
+                        j = i + 1
+                        student_count = 0
+                        while j < len(df_events) and pd.isnull(df_events.loc[j, "Billed Amount"]):
+                            student_count += 1
+                            j += 1
+                        event["Student Count"] = student_count
+                        events.append(event)
+                        i = j
+                    else:
+                        i += 1
 
-                df = pd.merge(df_events.drop(columns=["Student Count"]), latest_counts, on=["Date", "Description"], how="left")
-                df = pd.merge(df, df_room, how="left", on="Description")
-                df["Room Rate"] = df["Room Rate"].fillna(0)
-                df["Room Rate Per Student"] = df["Room Rate"] / df["Student_Count"]
-                df["Room Hire"] = df["Room Rate Per Student"] * df["Student_Count"]
-                df["Profit"] = df["Billed Amount"] - df["Room Hire"]
+                df_summary = pd.DataFrame(events)
+                df_summary = df_summary.merge(df_room, on="Description", how="left")
+                df_summary["Room Rate"] = df_summary["Room Rate"].fillna(0)
+                df_summary["Room Rate Per Student"] = df_summary["Room Rate"] / df_summary["Student Count"]
+                df_summary["Room Hire"] = df_summary["Room Rate Per Student"] * df_summary["Student Count"]
+                df_summary["Profit"] = df_summary["Billed Amount"] - df_summary["Room Hire"]
 
-                summary = df.groupby("Description").agg(
-                    Total_Events=('Date', 'nunique'),
-                    Total_Billed_Amount=('Billed Amount', 'sum'),
-                    Total_Room_Hire=('Room Hire', 'sum'),
-                    Total_Profit=('Profit', 'sum')
+                summary = df_summary.groupby("Description").agg(
+                    Total_Events=("Date", "count"),
+                    Total_Students=("Student Count", "sum"),
+                    Total_Billed_Amount=("Billed Amount", "sum"),
+                    Total_Room_Hire=("Room Hire", "sum"),
+                    Total_Profit=("Profit", "sum")
                 ).reset_index()
 
                 summary["Total_Billed_Amount"] = summary["Total_Billed_Amount"].round(2)
