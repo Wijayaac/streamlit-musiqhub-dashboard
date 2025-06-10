@@ -211,6 +211,6 @@ elif selected_tab == "Event Profit Summary":
                 summary["Total_Profit"] = summary["Total_Profit"].round(2)
 
                 st.subheader("Event Profit Summary by Description")
-                st.dataframe(summary.reset_index(drop=True).rename_axis("#").reset_index())
+                st.dataframe(summary)
     else:
         st.info("Paste a Google Drive folder ID above to view files.")
