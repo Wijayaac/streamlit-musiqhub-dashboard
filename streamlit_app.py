@@ -168,11 +168,15 @@ elif selected_tab == "Event Profit Summary":
 
                 df_room = xls.parse(xls.sheet_names[1])
                 df_room.columns = df_room.columns.str.strip().str.lower()
-                column_renames_room = {
-                    "description": "Description",
-                    "room rate per student": "Room Rate Per Student"
-                }
-                df_room.rename(columns=column_renames_room, inplace=True)
+
+                desc_col = next((col for col in df_room.columns if "description" in col), None)
+                rate_col = next((col for col in df_room.columns if "rate" in col and "student" in col), None)
+
+                if not desc_col or not rate_col:
+                    st.error(f"Could not find required columns in Sheet 2. Found columns: {list(df_room.columns)}")
+                    st.stop()
+
+                df_room = df_room.rename(columns={desc_col: "Description", rate_col: "Room Rate Per Student"})
                 df_room = df_room[["Description", "Room Rate Per Student"]]
                 df_room["Description"] = df_room["Description"].astype(str).str.lower().str.strip()
                 df_room["Room Rate Per Student"] = df_room["Room Rate Per Student"].astype(str).str.extract(r'(\d+\.\d+|\d+)')[0].astype(float)
