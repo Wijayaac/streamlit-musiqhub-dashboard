@@ -133,8 +133,16 @@ if selected_tab == "MusiqHub Dashboard":
 elif selected_tab == "Event Profit Summary":
     st.title("Event Profit Summary")
 
+    # Retrieve folder ID from secrets or user input
+    folder_id = st.secrets.get("sheet_folder_id")
+    if not folder_id:
+        folder_id = st.sidebar.text_input("Enter Drive Folder ID", value="", help="Provide the Google Drive folder ID for your Excel files.")
+    if not folder_id:
+        st.warning("Please set 'sheet_folder_id' in Streamlit secrets or enter it above.")
+        st.stop()
+
     # Let user pick the Excel file from the Drive folder
-    files = list_excel_files_from_folder(st.secrets["sheet_folder_id"])
+    files = list_excel_files_from_folder(folder_id)
     file_names = [f["name"] for f in files]
     selected_file = st.sidebar.selectbox("Select Excel file for Event Profit", [""] + file_names)
     if not selected_file:
