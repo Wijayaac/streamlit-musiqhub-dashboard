@@ -133,19 +133,63 @@ if selected_tab == "MusiqHub Dashboard":
 elif selected_tab == "Event Profit Summary":
     st.title("Event Profit Summary")
 
-    # Define blank DataFrame with headers and four empty rows
-    columns = [
-    "Description", 
-    "Events", 
-    "Students", 
-    "Billable Total", 
-    "Room Hire", 
-    "Room Hire Per Student", 
-    "Tax (15%)", 
-    "Profit"
-]
-    blank_data = pd.DataFrame([[""] * len(columns) for _ in range(4)], columns=columns)
+    # Let user pick the Excel file from the Drive folder
+    files = list_excel_files_from_folder(st.secrets["sheet_folder_id"])
+    file_names = [f["name"] for f in files]
+    selected_file = st.sidebar.selectbox("Select Excel file for Event Profit", [""] + file_names)
+    if not selected_file:
+        st.warning("Please select an Excel file.")
+        st.stop()
+    file_id = next(f["id"] for f in files if f["name"] == selected_file)
 
-    # Display the blank table
+    # Download the Excel file from Drive
+    service = get_drive_service()
+    request = service.files().get_media(fileId=file_id)
+    fh = io.BytesIO()
+    downloader = MediaIoBaseDownload(fh, request)
+    done = False
+    while not done:
+        status, done = downloader.next_chunk()
+    fh.seek(0)
+    df_sheet3 = pd.read_excel(fh, sheet_name=2, header=None)
+    fh.seek(0)
+    df_sheet2 = pd.read_excel(fh, sheet_name=1)
+
+    # Parse sheet3 for sequential event sections
+    summaries = {}
+    current_desc = None
+    for _, row in df_sheet3.iterrows():
+        desc_cell = row.iloc[2]
+        student_cell = row.iloc[5]
+        billed_cell = row.iloc[8]
+        if pd.notna(desc_cell):
+            current_desc = desc_cell
+            summaries.setdefault(current_desc, {"events": 0, "students": 0, "billed": 0})
+            summaries[current_desc]["events"] += 1
+        elif current_desc:
+            if pd.notna(student_cell):
+                summaries[current_desc]["students"] += 1
+            if pd.notna(billed_cell):
+                summaries[current_desc]["billed"] += billed_cell
+
+    # Map room rates from sheet2 (columns A and C)
+    rate_map = dict(zip(df_sheet2.iloc[:, 0], df_sheet2.iloc[:, 2]))
+
+    # Build DataFrame rows
+    rows = []
+    for desc, vals in summaries.items():
+        rate = rate_map.get(desc, 0)
+        students = vals["students"]
+        per_student = rate / students if students else 0
+        billed = vals["billed"]
+        tax = billed * 0.15
+        profit = billed - tax - rate
+        rows.append([desc, vals["events"], students, rate, per_student, tax, billed, profit])
+
+    event_summary_df = pd.DataFrame(rows, columns=[
+        "Description", "Events", "Students", "Room rate", 
+        "Room rate per student", "Tax", "Billed amount", "Profit"
+    ])
+
     st.subheader("Event Profit Summary Table")
-    st.dataframe(blank_data)
+    st.dataframe(event_summary_df)
