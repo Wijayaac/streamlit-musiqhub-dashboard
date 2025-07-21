@@ -7,9 +7,9 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 
-st.set_page_config(page_title="MusiqHub Dashboard", layout="wide")
+st.set_page_config(page_title="Event Profit Summary", layout="wide")
 
-selected_tab = st.sidebar.radio("Select Page", [ "About", "MusiqHub Dashboard", "Event Profit Summary"])
+selected_tab = st.sidebar.radio("Select Page", ["Event Profit Summary", "MusiqHub Dashboard"])
 
 st.markdown("""
 <style>
@@ -92,12 +92,13 @@ def get_room_rate(room_name):
     room_rates = {
         "BBPS": 60.00,
         "St Marks": 20.00,
+        "St Mark's": 20.00,
         "Sunnyhills": 40.00,
         "Farm Cove": 20.00,
 				"Golden Grove": 20.00,
 				"HPS": 20.00,
 				"Oranga": 20.00,
-				"Wakaaranga": 20.00,
+				"Wakaaranga": 0,
 				"PHS": 20.00,
     }
     return room_rates.get(room_name, 0.0)  # Returns 0.0 if room_name not found
@@ -109,18 +110,21 @@ def get_room_rate(room_name):
 # df_clean = clean_event_sheet(df_raw)
 # st.dataframe(df_clean)
 def clean_event_sheet(df):
+		# Remove the first row (title/header row)
+		df = df.iloc[1:].reset_index(drop=True)
 		# Forward fill Event Date, Duration, Description (room name)
 		df[[0, 1, 2]] = df[[0, 1, 2]].ffill()
 		# Rename columns for clarity
-		expected_columns = ["Event Date", "Duration", "Description", "Teacher Name", "Payroll Amount", "Student Name", "Family", "Status", "Pre-Tax Billed Amount", "Billed Amount"]
+		# expected_columns = ["Event Date", "Duration", "Description", "Teacher Name", "Payroll Amount", "Student Name", "Family", "Status", "Pre-Tax Billed Amount", "Billed Amount", "GST Component"]
+		expected_columns = ["Event Date","Duration","Description","Teacher Name","Payroll Amount","Student Name","Family","Status","Pre-Tax Billed Amount","Billed Amount","Room Hire","GST Component","Net Lesson Fee excl GST & Room Hire"]
 		if len(df.columns) >= len(expected_columns):
-			df = df.iloc[:, :len(expected_columns)]  # Trim extra columns if present
-			df.columns = expected_columns
-			# Remove the first row if it matches the column titles
-			if (df.iloc[0] == expected_columns).all():
-				df = df.iloc[1:].reset_index(drop=True)
+				df = df.iloc[:, :len(expected_columns)]  # Trim extra columns if present
+				df.columns = expected_columns
+				# Remove the first row if it matches the column titles (in case header row is duplicated)
+				if (df.iloc[0] == expected_columns).all():
+					df = df.iloc[1:].reset_index(drop=True)
 		else:
-			raise ValueError(f"Column count mismatch: Expected at least {len(expected_columns)}, but got {len(df.columns)}")
+				raise ValueError(f"Column count mismatch: Expected at least {len(expected_columns)}, but got {len(df.columns)}")
 		# Drop rows where Student Name is missing or blank
 		df = df[df["Student Name"].notna() & (df["Student Name"].astype(str).str.strip() != "")]
 		df = df.reset_index(drop=True)
@@ -226,93 +230,7 @@ if selected_tab == "MusiqHub Dashboard":
         st.markdown(filtered_df.groupby("Franchisee").agg({"Gross Profit": "sum"}).reset_index().to_html(index=False), unsafe_allow_html=True)
 
 elif selected_tab == "Event Profit Summary":
-    st.title("Event Profit Summary")
-
-    # Retrieve folder ID from secrets or user input
-    folder_id = st.secrets.get("sheet_folder_id")
-    if not folder_id:
-        folder_id = st.sidebar.text_input("Enter Drive Folder ID", value="", help="Provide the Google Drive folder ID for your Excel files.")
-    if not folder_id:
-        st.warning("Please set 'sheet_folder_id' in Streamlit secrets or enter it above.")
-        st.stop()
-
-    # Let user pick the Excel file from the Drive folder
-    files = list_excel_files_from_folder(folder_id)
-    file_names = [f["name"] for f in files]
-    selected_file = st.sidebar.selectbox("Select Excel file for Event Profit", [""] + file_names)
-    if not selected_file:
-        st.warning("Please select an Excel file.")
-        st.stop()
-    file_id = next(f["id"] for f in files if f["name"] == selected_file)
-
-    # Download the Excel file from Drive
-    service = get_drive_service()
-    request = service.files().get_media(fileId=file_id)
-    fh = io.BytesIO()
-    downloader = MediaIoBaseDownload(fh, request)
-    done = False
-    while not done:
-        status, done = downloader.next_chunk()
-    fh.seek(0)
-    df_sheet3 = pd.read_excel(fh, sheet_name=2, header=None)
-    fh.seek(0)
-    df_sheet2 = pd.read_excel(fh, sheet_name=1)
-
-    # Parse sheet3 for sequential event sections
-    summaries = {}
-    current_desc = None
-    for _, row in df_sheet3.iterrows():
-        desc_cell = row.iloc[2]
-        student_cell = row.iloc[5]
-        billed_cell = row.iloc[8]
-        if pd.notna(desc_cell):
-            current_desc = desc_cell
-            summaries.setdefault(current_desc, {"events": 0, "students": 0, "billed": 0})
-            summaries[current_desc]["events"] += 1
-        elif current_desc:
-            if pd.notna(student_cell):
-                summaries[current_desc]["students"] += 1
-            if pd.notna(billed_cell):
-                summaries[current_desc]["billed"] += billed_cell
-
-    # Map room rates from sheet2 (columns A and C)
-    rate_map = dict(zip(df_sheet2.iloc[:, 0], df_sheet2.iloc[:, 2]))
-
-    # Build DataFrame rows
-    rows = []
-    for desc, vals in summaries.items():
-        rate = rate_map.get(desc, 0)
-        students = vals["students"]
-        per_student = rate / students if students else 0
-        billed = vals["billed"]
-        tax = billed * 0.15
-        profit = billed - tax - rate
-        rows.append([desc, vals["events"], students, rate, per_student, tax, billed, profit])
-
-    event_summary_df = pd.DataFrame(rows, columns=[
-        "Description", "Events", "Students", "Room rate", 
-        "Room rate per student", "Tax", "Billed amount", "Profit"
-    ])
-
-    st.subheader("Event Profit Summary Table")
-    st.dataframe(event_summary_df)
-
-elif selected_tab == "About":
-		st.title("About MusiqHub Dashboard")
-		st.markdown("""
-		This dashboard provides insights into the MusiqHub franchise operations, including student enrolments, revenue, and profit summaries.
-		
-		**Features:**
-		- Filter data by year, term, and franchisee
-		- View detailed summaries of student counts, lesson numbers, and financial metrics
-		- Event profit summaries with detailed breakdowns
-		
-		**Data Sources:**
-		- CSV uploads for custom data
-		- Google Drive integration for Excel files
-		
-		**Developed by:** Your Name
-		""")
+		st.title("Event Profit Summary Dashboard")
 		# Read both Excel files (first sheet by default)
 		df_feb = pd.read_excel("source/2025-02.xlsx")
 		df_mar = pd.read_excel("source/2025-03.xlsx")
@@ -320,8 +238,8 @@ elif selected_tab == "About":
 
 		# Display the third sheet of the February file
 		st.subheader("February 2025 Data")
-		df_feb_sheet3 = pd.read_excel("source/2025-02.xlsx", sheet_name=2, header=None)
-		df_feb_cleaned = clean_event_sheet(df_feb_sheet3)
+		df_feb_sheet2 = pd.read_excel("source/2025-02.xlsx", sheet_name=0, header=None)
+		df_feb_cleaned = clean_event_sheet(df_feb_sheet2)
 		st.dataframe(df_feb_cleaned) 
 
 		# From the cleaned DataFrame, so there is a Student Name and the Description, so each student has divider of comma (,) it's mean more than one student in the same room
@@ -345,39 +263,91 @@ elif selected_tab == "About":
 			# Count the number of unique students per room Description
 			df_feb_exploded = df_feb_cleaned.explode("Student Name")
 			total_students_per_room = df_feb_exploded.groupby("Description")["Student Name"].nunique().reset_index()
-			total_students_per_room.columns = ["Description", "Total Room Usage"]
+			total_students_per_room.columns = ["Description", "Total Students"]
+			total_students_per_room["Room Rate"] = total_students_per_room["Description"].map(get_room_rate)
 			# Calculate the room rate per student
 			room_rate_per_student_map = {
 				desc: get_room_rate(desc) / total_students if total_students > 0 else 0
-				for desc, total_students in zip(total_students_per_room["Description"], total_students_per_room["Total Room Usage"])
+				for desc, total_students in zip(total_students_per_room["Description"], total_students_per_room["Total Students"])
 			}
+			
+			room_hire_sum = df_feb_cleaned.groupby("Description")["Room Hire"].sum()
+			# add a new column for Room Hire
+			total_students_per_room["Room Hire"] = total_students_per_room["Description"].map(room_hire_sum)
+	
 			total_students_per_room["Room Rate per Students"] = total_students_per_room["Description"].map(room_rate_per_student_map)
+			# Add a new row for totals
+			total_students = total_students_per_room["Total Students"].sum()
+			room_rate = total_students_per_room["Room Rate"].sum()
+			room_hire = total_students_per_room["Room Hire"].sum()
+			total_row = pd.DataFrame([["Total", room_rate, total_students, room_rate / total_students if total_students > 0 else 0, room_hire]],
+				columns=["Description", "Room Rate", "Total Students", "Room Rate per Students", "Room Hire"])
+			total_students_per_room = pd.concat([total_students_per_room, total_row], ignore_index=True)
+
+			# Reorder columns: Description, Room Rate, Total Students
+			total_students_per_room = total_students_per_room[["Description", "Room Rate", "Total Students", "Room Rate per Students", "Room Hire"]]
+
 			st.markdown(total_students_per_room.to_html(index=False), unsafe_allow_html=True)
 
-		# Just show the Description, Billed Amount from the cleaned DataFrame
-		# st.subheader("February 2025 Profit per student")
-		df_feb_cleaned["Profit"] = df_feb_cleaned.apply(
-			lambda row: 0 if row["Billed Amount"] == 0.0 else row["Billed Amount"] - (row["Billed Amount"] * GST_RATE) - get_fee(row["Billed Amount"]) - room_rate_per_student_map.get(row["Description"], 0),
-			axis=1
-		)
-
-		# st.markdown(df_feb_cleaned[["Event Date", "Duration","Description", "Billed Amount", "Profit"]].to_html(index=False), unsafe_allow_html=True)
 		
+		# Based on the df_feb_cleaned DataFrame, show the total fee per tier
+		st.subheader("February 2025 Total Fee per Tier")
+		if "Net Lesson Fee excl GST & Room Hire" in df_feb_cleaned.columns:
+			# Ensure the column is numeric and fill NaN with 0
+			df_feb_cleaned["Net Lesson Fee excl GST & Room Hire"] = pd.to_numeric(df_feb_cleaned["Net Lesson Fee excl GST & Room Hire"], errors="coerce").fillna(0)
+			# Calculate the tier and fee for each row
+			df_feb_cleaned["Tier"] = df_feb_cleaned["Net Lesson Fee excl GST & Room Hire"].apply(get_tier)
+			df_feb_cleaned["Tier Fee"] = df_feb_cleaned["Net Lesson Fee excl GST & Room Hire"].apply(get_fee)
+			# Count number of rows per tier and calculate total fee per tier
+			# Exclude rows where "Net Lesson Fee excl GST & Room Hire" is zero (i.e., originally blank)
+			df_tier = df_feb_cleaned[df_feb_cleaned["Net Lesson Fee excl GST & Room Hire"] != 0]
+			tier_summary = df_tier.groupby("Tier").agg(
+				Total_on_Tier = ("Net Lesson Fee excl GST & Room Hire", "count"),
+				Tier_Fee = ("Tier Fee", "first")
+			).reset_index()
+
+			# Ensure Tier 1 is present even if count is 0
+			if 1 not in tier_summary["Tier"].values:
+				tier1_fee = get_fee(1)  # or use get_fee(0) if you want
+				tier1_row = pd.DataFrame([{"Tier": 1, "Total_on_Tier": 0, "Tier_Fee": tier1_fee}])
+				tier_summary = pd.concat([tier1_row, tier_summary], ignore_index=True)
+			tier_summary = tier_summary.sort_values("Tier").reset_index(drop=True)
+			tier_summary["Total Fee"] = tier_summary["Total_on_Tier"] * tier_summary["Tier_Fee"]
+			# Add a total row
+			total_row = pd.DataFrame([["Total", tier_summary["Total_on_Tier"].sum(), "", tier_summary["Total Fee"].sum()]], columns=["Tier", "Total_on_Tier", "Tier_Fee", "Total Fee"])
+			tier_summary = pd.concat([tier_summary, total_row], ignore_index=True)
+			# Display the updated DataFrame
+			st.dataframe(tier_summary)
+
+		
+		# Add a new column called "Profit" to the df_feb_cleaned DataFrame
+		# Ensure columns are numeric and fill NaN with 0
+		for col in ["Billed Amount", "GST Component", "Room Hire"]:
+		    df_feb_cleaned[col] = pd.to_numeric(df_feb_cleaned[col], errors="coerce").fillna(0)
+		df_feb_cleaned["Profit"] = df_feb_cleaned["Billed Amount"] - (df_feb_cleaned["GST Component"] + df_feb_cleaned["Room Hire"])
 
 		# Convert the above data to a DataFrame and sum the profit per Description
 		st.subheader("February 2025 Total Profit per Room")
 		# Calculate total profit and total billed amount per room
 		profit_per_room = df_feb_cleaned.groupby("Description").agg({
+			"Room Hire": "sum",
+			"GST Component": "sum",
 			"Profit": "sum",
 			"Billed Amount": "sum"
 		}).reset_index()
-		profit_per_room = profit_per_room.rename(columns={"Profit": "Total Profit (-10% GST)", "Billed Amount": "Total Billed Amount"})
+
+		# Show the profit per room after deducting GST
+		profit_per_room = profit_per_room.rename(columns={"Profit": "Total Profit (excl GST & Room Hire)", "Billed Amount": "Total Billed Amount"})
+		# Show the room rate per student based on the above total_students_per_room DataFrame
 		profit_per_room["Room rate per Students"] = profit_per_room["Description"].map(room_rate_per_student_map)
-		profit_per_room = profit_per_room[["Description", "Room rate per Students", "Total Billed Amount", "Total Profit (-10% GST)"]]
+
+		profit_per_room = profit_per_room[["Description", "Total Billed Amount", "Room Hire","GST Component", "Total Profit (excl GST & Room Hire)"]]
 		# Add a new row for totals
-		total_profit = profit_per_room["Total Profit (-10% GST)"].sum()
+		total_profit = profit_per_room["Total Profit (excl GST & Room Hire)"].sum()
 		total_billed = profit_per_room["Total Billed Amount"].sum()
-		total_row = pd.DataFrame([["Total", None, total_billed, total_profit]], columns=["Description", "Room rate per Students", "Total Billed Amount", "Total Profit (-10% GST)"])
+		total_room_hire = profit_per_room["Room Hire"].sum()
+		total_gst = profit_per_room["GST Component"].sum()
+		total_row = pd.DataFrame([["Total", total_billed, total_room_hire, total_gst, total_profit]], columns=["Description", "Total Billed Amount", "Room Hire", "GST Component", "Total Profit (excl GST & Room Hire)"])
 		profit_per_room = pd.concat([profit_per_room, total_row], ignore_index=True)
 
 		# Display the updated DataFrame
