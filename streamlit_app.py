@@ -3,9 +3,19 @@ import pandas as pd
 import numpy as np
 import json
 import io
+import tempfile
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
+from weasyprint import HTML
+
+def dataframe_to_pdf_bytes(df, title="Data"):
+    html = f"<h2>{title}</h2>" + df.to_html(index=False)
+    with tempfile.NamedTemporaryFile(suffix=".pdf") as tmpfile:
+        HTML(string=html).write_pdf(tmpfile.name)
+        tmpfile.seek(0)
+        pdf_bytes = tmpfile.read()
+    return pdf_bytes
 
 st.set_page_config(page_title="Source Data", layout="wide")
 
@@ -312,6 +322,14 @@ elif selected_tab == "Event Profit Summary":
 
       # Reorder columns: Description, Room Rate, Total Students
       total_students_per_room = total_students_per_room[["Description", "Room Rate", "Total Students", "Room Rate per Students", "Room Hire"]]
+      if not total_students_per_room.empty:
+        pdf_bytes = dataframe_to_pdf_bytes(total_students_per_room, title="February 2025 Total Students per Description (Room)")
+        st.download_button(
+            label="Download as PDF",
+            data=pdf_bytes,
+            file_name="total_students_per_room.pdf",
+            mime="application/pdf"
+        )
 
       st.markdown(total_students_per_room.to_html(index=False), unsafe_allow_html=True)
 

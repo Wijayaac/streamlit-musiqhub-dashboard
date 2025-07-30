@@ -6,3 +6,4 @@ google-auth==2.29.0
 google-auth-oauthlib==1.2.0
 google-api-python-client==2.126.0
 httplib2==0.21.0
+weasyprint>=60.0
