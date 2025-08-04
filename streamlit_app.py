@@ -7,15 +7,6 @@ import tempfile
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
-from weasyprint import HTML
-
-def dataframe_to_pdf_bytes(df, title="Data"):
-    html = f"<h2>{title}</h2>" + df.to_html(index=False)
-    with tempfile.NamedTemporaryFile(suffix=".pdf") as tmpfile:
-        HTML(string=html).write_pdf(tmpfile.name)
-        tmpfile.seek(0)
-        pdf_bytes = tmpfile.read()
-    return pdf_bytes
 
 st.set_page_config(page_title="Source Data", layout="wide")
 
@@ -323,7 +314,14 @@ elif selected_tab == "Event Profit Summary":
       # Reorder columns: Description, Room Rate, Total Students
       total_students_per_room = total_students_per_room[["Description", "Room Rate", "Total Students", "Room Rate per Students", "Room Hire"]]
       if not total_students_per_room.empty:
-        html_bytes = total_students_per_room.to_html(index=False).encode()
+        custom_css = """
+					<style>
+					    table { width: 100%; border-collapse: collapse; }
+					    th, td { text-align: left; padding: 8px; border: 1px solid #ddd; }
+					    th { background-color: #f2f2f2; }
+					</style>
+					"""
+        html_bytes = (custom_css + total_students_per_room.to_html(index=False)).encode()
         st.download_button(
 					  label="Download as HTML",
 				    data=html_bytes,
