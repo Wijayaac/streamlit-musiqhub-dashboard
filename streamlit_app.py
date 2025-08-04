@@ -11,6 +11,7 @@ from reportlab.lib.pagesizes import letter, landscape
 from reportlab.pdfgen import canvas
 from reportlab.lib import colors
 from reportlab.platypus import Table, TableStyle
+from reportlab.lib.pagesizes import A4, landscape as rl_landscape
 
 st.set_page_config(page_title="Source Data", layout="wide")
 
@@ -43,9 +44,11 @@ def list_excel_files_from_folder(folder_id):
 	
 def dataframe_to_pdf_bytes(df, title="Data"):
 		buffer = io.BytesIO()
-		c = canvas.Canvas(buffer, pagesize=landscape(letter))
-		width, height = landscape(letter)
-		c.setFont("Helvetica-Bold", 16)
+		# Use landscape A4
+		page_size = rl_landscape(A4)
+		c = canvas.Canvas(buffer, pagesize=page_size)
+		width, height = page_size
+		c.setFont("Helvetica-Bold", 13)
 		c.drawString(30, height - 40, title)
 		c.setFont("Helvetica", 10)
 
@@ -348,20 +351,26 @@ elif selected_tab == "Event Profit Summary":
 
 			# Reorder columns: Description, Room Rate, Total Students
 			total_students_per_room = total_students_per_room[["Description", "Room Rate", "Total Students", "Room Rate per Students", "Room Hire"]]
+			# Round numeric columns to 2 decimal places for display
+			for col in ["Room Rate", "Room Rate per Students", "Room Hire"]:
+				if col in total_students_per_room.columns:
+					total_students_per_room[col] = pd.to_numeric(total_students_per_room[col], errors="coerce").round(2)
+     
+     	# Add PDF download and HTML download buttons
 			if not total_students_per_room.empty:
 				custom_css = """
 					<style>
-					    table { width: 100%; border-collapse: collapse; }
-					    th, td { text-align: left; padding: 8px; border: 1px solid #ddd; }
-					    th { background-color: #f2f2f2; }
+						table { width: 100%; border-collapse: collapse; }
+						th, td { text-align: left; padding: 8px; border: 1px solid #ddd; }
+						th { background-color: #f2f2f2; }
 					</style>
 					"""
 				html_bytes = (custom_css + total_students_per_room.to_html(index=False)).encode()
 				st.download_button(
 					  label="Download as HTML",
-				    data=html_bytes,
-				    file_name="total_students_per_room.html",
-				    mime="text/html"
+					data=html_bytes,
+					file_name="total_students_per_room.html",
+					mime="text/html"
 				)
 				pdf_bytes = dataframe_to_pdf_bytes(total_students_per_room, title="February 2025 Total Students per Description (Room)")
 				st.download_button(
@@ -420,6 +429,10 @@ elif selected_tab == "Event Profit Summary":
 			"Profit": "sum",
 			"Billed Amount": "sum"
 		}).reset_index()
+
+		# Round all numeric columns to 2 decimal places
+		numeric_cols = ["Room Hire", "GST Component", "Profit", "Billed Amount"]
+		profit_per_room[numeric_cols] = profit_per_room[numeric_cols].round(2)
 
 		# Show the profit per room after deducting GST
 		profit_per_room = profit_per_room.rename(columns={"Profit": "Total Profit (excl GST & Room Hire)", "Billed Amount": "Total Billed Amount"})
