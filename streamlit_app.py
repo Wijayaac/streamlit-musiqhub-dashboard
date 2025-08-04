@@ -316,20 +316,20 @@ elif selected_tab == "Event Profit Summary":
       total_students = total_students_per_room["Total Students"].sum()
       room_rate = total_students_per_room["Room Rate"].sum()
       room_hire = total_students_per_room["Room Hire"].sum()
-      total_row = pd.DataFrame([["Total", room_rate, total_students, room_rate / total_students if total_students > 0 else 0, room_hire]],
+      total_row = pd.DataFrame([["Total", room_rate, total_students, 0, room_hire]],
         columns=["Description", "Room Rate", "Total Students", "Room Rate per Students", "Room Hire"])
       total_students_per_room = pd.concat([total_students_per_room, total_row], ignore_index=True)
 
       # Reorder columns: Description, Room Rate, Total Students
       total_students_per_room = total_students_per_room[["Description", "Room Rate", "Total Students", "Room Rate per Students", "Room Hire"]]
       if not total_students_per_room.empty:
-        pdf_bytes = dataframe_to_pdf_bytes(total_students_per_room, title="February 2025 Total Students per Description (Room)")
+        html_bytes = total_students_per_room.to_html(index=False).encode()
         st.download_button(
-            label="Download as PDF",
-            data=pdf_bytes,
-            file_name="total_students_per_room.pdf",
-            mime="application/pdf"
-        )
+					  label="Download as HTML",
+				    data=html_bytes,
+				    file_name="total_students_per_room.html",
+				    mime="text/html"
+				)
 
       st.markdown(total_students_per_room.to_html(index=False), unsafe_allow_html=True)
 
