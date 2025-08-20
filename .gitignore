@@ -1,7 +1,7 @@
 # Ignore Google OAuth credentials
 client_secret_*.json
 musiqhub-dashboard-access.json
-.streamlit/secrets.toml
+.streamlit/*
 
 # Mac system files
 .DS_Store
