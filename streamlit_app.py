@@ -63,8 +63,8 @@ def _sync_global_month_year():
 _sync_global_month_year()
 
 # Show the global selection in the sidebar for visibility (non-interactive)
-st.sidebar.markdown("**Global selected month / year**")
-st.sidebar.write(st.session_state.get("selected_month"), st.session_state.get("selected_year"))
+# st.sidebar.markdown("**Global selected month / year**")
+# st.sidebar.write(st.session_state.get("selected_month"), st.session_state.get("selected_year"))
 
 st.markdown("""
 <style>
