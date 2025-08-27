@@ -16,7 +16,7 @@ from reportlab.lib.pagesizes import A4, landscape as rl_landscape
 from reportlab.lib.styles import getSampleStyleSheet
 from datetime import datetime
 from difflib import get_close_matches
-
+from room_rate import ROOM_RATES, ALIASES
 
 st.set_page_config(page_title="Source Data", layout="wide")
 
@@ -225,219 +225,6 @@ def get_fee(lesson_fee):
 # Tax rate for GST
 GST_RATE = 0.10
 
-# Add canonical room rate lookup using normalized keys and optional aliases
-# --- AUTO-GENERATED ROOM RATES (deduplicated, no aliases) ---
-# All keys are normalized (lowercase, punctuation removed, spaces collapsed)
-ROOM_RATES = {
-	"bobbys private studio hurford road": 225.00,
-	"bobbys private studio new plymouth saxton road": 187.50,
-	"egmont village school": 0.00,
-	"inglewood mamaku centre": 15.00,
-	"lepperton school": 0.00,
-	"puketapu school": 0.00,
-	"urenui community hall": 0.00,
-	"welbourn school": 0.00,
-	"oakura school": 0.00,
-	"macleans primary school": 0.00,
-	"mellons bay school": 0.00,
-	"ormiston primary school": 0.00,
-	"stanhope road school": 0.00,
-	"sunnyhills school": 17.39,
-	"the gardens school": 0.00,
-	"cockle bay school": 0.00,
-	"point view school": 34.50,
-	"st johns school": 20.70,
-	"belmont primary school": 20.00,
-	"campbells bay school": 30.00,
-	"devonport school": 17.25,
-	"milford school auckland": 23.00,
-	"stanley bay school": 25.87,
-	"sunnynook school": 28.75,
-	"willow park": 37.50,
-	"bayswater school": 0.00,
-	"chelsea primary school": 0.00,
-	"forrest hill school": 0.00,
-	"takapuna school": 0.00,
-	"westminster christian school": 0.00,
-	"andersons bay school": 10.00,
-	"columba college": 22.01,
-	"east taieri school": 0.00,
-	"elmgrove school": 0.00,
-	"fairfield school dunedin": 0.00,
-	"george street normal school": 0.00,
-	"grants braes school": 0.00,
-	"joels online lessons": 0.00,
-	"kaikorai school": 10.00,
-	"macandrew bay school": 0.00,
-	"maori hill school": 15.00,
-	"silverstream south primary school": 0.00,
-	"st brigids school tainui": 0.00,
-	"st hildas collegiate school": 0.00,
-	"st marys school mosgiel": 0.00,
-	"taieri college": 0.00,
-	"bayview school": 0.00,
-	"hauraki school": 0.00,
-	"hobsonville point primary school": 0.00,
-	"northcote school auckland": 0.00,
-	"northcote war memorial hall": 0.00,
-	"st marys school northcote": 11.40,
-	"windy ridge school": 0.00,
-	"bucklands beach school": 60.00,
-	"farm cove intermediate": 20.00,
-	"golden grove school": 0.00,
-	"howick primary school": 0.00,
-	"oranga school": 0.00,
-	"pakuranga heights school": 0.00,
-	"st marks catholic school": 20.00,
-	"wakaaranga school": 0.00,
-	"edendale school auckland": 70.00,
-	"victoria avenue": 92.00,
-	"greenhithe school": 60.00,
-	"waimauku school": 48.00,
-	"maraetai beach school": 60.00,
-	"huapai district school": 0.00,
-	"matua ngaru school": 45.00,
-	"three kings": 22.00,
-	"freemans bay school": 0.00,
-	"halsey drive school": 0.00,
-	"northcote intermediate": 0.00,
-	"pauls home studio": 0.00,
-	"st marys school papakura": 0.00,
-	"takapuna normal intermediate school": 0.00,
-	"taupaki school": 0.00,
-	"upper harbour primary school": 0.00,
-	"waterlea public school": 0.00,
-	"whenuapai school": 0.00,
-	"glamorgan school": 30.00,
-	"murrays bay school": 10.00,
-	"oteha valley school": 15.00,
-	"ahutoetoe school": 0.00,
-	"nukumea primary school": 0.00,
-	"torbay school": 0.00,
-	"st heliers school": 0.00,
-	"waikowhai intermediate": 0.00,
-	"gladstone school auckland": 0.00,
-	"mt eden normal school": 0.00,
-	"blockhouse bay primary": 0.00,
-	"fruitvale road school": 0.00,
-	"glen eden intermediate": 0.00,
-	"marina view school": 0.00,
-	"titirangi school": 0.00,
-	"waterview school": 0.00,
-	"matua school": 0.00,
-	"pillans point school": 0.00,
-	"suzanne aubert catholic school": 0.00,
-	"blockhouse bay intermediate": 0.00,
-	"churchil park school": 0.00,
-	"conifer grove school": 0.00,
-	"kohia terrace school": 0.00,
-	"new windsor school": 0.00,
-	"reremoana primary school": 0.00,
-	"lih guitar studio": 0.00,
-	"aberdeen school": 0.00,
-	"david street school": 0.00,
-	"endeavour school": 0.00,
-	"hamilton east school": 0.00,
-	"horsham downs school": 0.00,
-	"hukanui school": 0.00,
-	"marian catholic school hamilton": 0.00,
-	"morrinsville intermediate": 0.00,
-	"motumaoho school": 0.00,
-	"newstead model school": 0.00,
-	"orini combined school": 0.00,
-	"rototuna primary school": 0.00,
-	"rototuna junior high school": 0.00,
-	"rototuna senior high school": 0.00,
-	"sacred heart girls college": 0.00,
-	"st columbas catholic school frankton": 0.00,
-	"st josephs catholic school fairfield": 0.00,
-	"st josephs catholic school morrinsville": 0.00,
-	"st pius x catholic school melville": 0.00,
-	"tauhei combined school": 0.00,
-	"tauwhare school": 0.00,
-	"te mata school raglan": 0.00,
-	"te rapa primary school": 0.00,
-	"te totara primary school": 0.00,
-	"waikato waldorf school rudolf steiner": 0.00,
-	"whitikahu school": 0.00,
-	"waitetuna school": 0.00,
-	"scotts home studio": 0.00,
-	"golden grove school": 0.00,
-	"tahatai coast school": 0.00,
-}
-
-# No aliases in this version; add as needed for alternate spellings/abbreviations
-ALIASES = {
-	# Map normalized abbreviations to normalized canonical names
-	"hurford rd": "bobbys private studio hurford road",
-	"new plymouth studio": "bobbys private studio new plymouth saxton road",
-	"saxton road studio": "bobbys private studio new plymouth saxton road",
-	"mps": "macleans primary school",
-	"ops": "ormiston primary school",
-	"stanhope": "stanhope road school",
-	"sunnyhills": "sunnyhills school",
-	"tgs": "the gardens school",
-	"cockle bay": "cockle bay school",
-	"macleans mon": "macleans primary school",
-	"point view fri": "point view school",
-	"st johns church tue": "st johns school",
-	"mellons bay mon": "mellons bay school",
-	"ormiston wed": "ormiston primary school",
-	"cockle bay wed": "cockle bay school",
-	"belmont school": "belmont primary school",
-	"milford school": "milford school auckland",
-	"chelsea school": "chelsea primary school",
-	"andersons bay": "andersons bay school",
-	"columba college": "columba college",
-	"kaikorai primary": "kaikorai school",
-	"maori hill": "maori hill school",
-	"bayview": "bayview school",
-	"hauraki": "hauraki school",
-	"hpps": "hobsonville point primary school",
-	"northcote primary": "northcote school auckland",
-	"st mary's": "st marys school northcote",
-	"windy ridge": "windy ridge school",
-	"bbps": "bucklands beach school",
-	"farm cove": "farm cove intermediate",
-	"golden grove": "golden grove school",
-	"hps": "howick primary school",
-	"oranga": "oranga school",
-	"phs": "pakuranga heights school",
-	"st marks": "st marks catholic school",
-	"wakaaranga": "wakaaranga school",
-	"edendale": "edendale school auckland",
-	"victoria ave": "victoria avenue",
-	"greenhithe": "greenhithe school",
-	"waimauku": "waimauku school",
-	"mbs": "maraetai beach school",
-	"huapai": "huapai district school",
-	"matua ngaru": "matua ngaru school",
-	"three kings": "three kings",
-	"freemans bay": "freemans bay school",
-	"halsey drive": "halsey drive school",
-	"nis": "northcote intermediate",
-	"tnis": "takapuna normal intermediate school",
-	"taupaki": "taupaki school",
-	"waterlea": "waterlea public school",
-	"whenuapai": "whenuapai school",
-	"glamorgan school": "glamorgan school",
-	"murrays bay school": "murrays bay school",
-	"oteha valley school": "oteha valley school",
-	"ahutoetoe school": "ahutoetoe school",
-	"nukumea primary school": "nukumea primary school",
-	"torbay school": "torbay school",
-	"farmcove": "farmcove intermediate",
-	"sunnyhills": "sunnyhills school",
-	"st heliers": "st heliers school",
-	"macleans prim": "macleans primary school",
-	"waikowhai": "waikowhai intermediate",
-	"menps": "mt eden normal school",
-	"matua": "matua school",
-	"pillans point": "pillans point school",
-	"suzanne aubert": "suzanne aubert catholic school",
-}
-# --- END AUTO-GENERATED ---
-
 def normalize_name(name: str) -> str:
 	if not name or pd.isna(name):
 		return ""
@@ -503,44 +290,59 @@ def clean_event_sheet(df):
 		df["Billed Amount"] = df["Billed Amount"].fillna(0.0)
 		return df
 
-def list_drive_excel_files(tutor_name="Morrison", year_date=None):
-		service = get_drive_service()
-		if not tutor_name or not year_date:
+def list_drive_excel_files(tutor_name="jordanmorrison", year_date=None):
+	service = get_drive_service()
+	if not tutor_name or not year_date:
+		return []
+
+	# Normalize tutor_name to folder format: lowercase, no spaces
+	tutor_folder = str(tutor_name).strip().lower().replace(" ", "")
+	# File name is <YYYY-MM>.xlsx
+	target_filename = f"{year_date}.xlsx"
+
+	# Find the folder ID for the tutor's folder
+	try:
+		# Search for the folder by name (case-insensitive)
+		folder_results = service.files().list(
+			q=f"mimeType = 'application/vnd.google-apps.folder' and name = '{tutor_folder}'",
+			fields="files(id, name)",
+			pageSize=1
+		).execute()
+		folders = folder_results.get("files", [])
+		if not folders:
+			st.error(f"No Google Drive folder found for tutor '{tutor_folder}'. Please check the folder name.")
 			return []
+		folder_id = folders[0]["id"]
+	except Exception as e:
+		st.error(f"Error searching for folder '{tutor_folder}': {e}")
+		return []
 
-		# Expecting files named like: <Name>-<YYYY>-<MM>.xlsx  e.g. Morrison-2025-05.xlsx
-		target_filename = f"{tutor_name}-{year_date}.xlsx"
-
-		# First try an exact-name match across Drive (including shared files)
-		try:
+	# Now list files in the folder matching the file name
+	try:
+		results = service.files().list(
+			q=f"'{folder_id}' in parents and name = '{target_filename}' and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
+			fields="files(id, name, parents)",
+			pageSize=1
+		).execute()
+		files = results.get("files", [])
+		# Fallback: try a contains search if not found
+		if not files:
 			results = service.files().list(
-			 	q=f"name = '{target_filename}' and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
+				q=f"'{folder_id}' in parents and name contains '{year_date}' and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
 				fields="files(id, name, parents)",
-				pageSize=1
+				pageSize=5
 			).execute()
 			files = results.get("files", [])
+		return files
+	except Exception as e:
+		st.error(f"Error searching Drive for '{target_filename}' in folder '{tutor_folder}': {e}")
+		return []
 
-			# Fallback: some files may not have the .xlsx suffix or small naming differences —
-			# try a "contains" search for '<Name>-<YYYY>-<MM>'
-			if not files:
-				results = service.files().list(
-						q=f"name contains '{tutor_name}-{year_date}' and mimeType='application/vnd.	openxmlformats-officedocument.spreadsheetml.sheet'",
-				 		fields="files(id, name, parents)",
-					pageSize=1
-				).execute()
-				files = results.get("files", [])
-
-			return files
-		except Exception as e:
-			st.error(f"Error searching Drive for '{target_filename}': {e}")
-			return []
 if selected_tab == "Source Data":
 	st.title("Source Data Dashboard")
 	st.markdown("Google Drive Files")
-	# Create a dropdown to filter the Tutor name (as the folder name), month and year of the file
-	# this selected data will be used to filter the files in the Google Drive folder
 	# Tutor selector persisted in session_state (mirrored to selected_tutor for a global canonical key)
-	tutor_options = ["Morrison", "Tutor2"]
+	tutor_options = ["Jordan Morrison", "Barry Lee", "Dave Gatman"]
 	default_tutor = st.session_state.get("tutor_name") or st.session_state.get("selected_tutor") or tutor_options[0]
 	if default_tutor not in tutor_options:
 		tutor_options.insert(0, default_tutor)
@@ -552,7 +354,6 @@ if selected_tab == "Source Data":
 	# Mirror to a canonical selected_tutor key so other parts of the app can read the global tutor
 	st.session_state["selected_tutor"] = st.session_state.get("tutor_name")
 	month_options = [f"{m:02d}" for m in range(1, 13)]
-	# Use global session_state month if present, otherwise fallback to current month
 	try:
 		default_month = int(st.session_state.get("month") or st.session_state.get("selected_month") or f"{datetime.now().month:02d}")
 	except Exception:
@@ -563,13 +364,11 @@ if selected_tab == "Source Data":
 	start_year = 2020
 	current_year = datetime.now().year
 	years = [str(y) for y in range(current_year, start_year - 1, -1)]  # newest first
-	# Use global session_state year if present, otherwise fallback to current year
 	default_year = st.session_state.get("year") or st.session_state.get("selected_year") or str(current_year)
 	if default_year not in years:
 		years.insert(0, default_year)
 	year_index = years.index(default_year)
 	year = st.selectbox("Select Year", years, index=year_index, key="year")
-	# Combine month and year to create the file name
 	file_name = f"{year}-{month}"
 
 	if tutor_name and month and year and file_name:
