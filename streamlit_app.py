@@ -297,6 +297,8 @@ def list_drive_excel_files(tutor_name="jordanmorrison", year_date=None):
 
 	# Normalize tutor_name to folder format: lowercase, no spaces
 	tutor_folder = str(tutor_name).strip().lower().replace(" ", "")
+	# Escape single quotes for Drive query
+	tutor_folder_escaped = tutor_folder.replace("'", "\\'")
 	# File name is <YYYY-MM>.xlsx
 	target_filename = f"{year_date}.xlsx"
 
@@ -304,7 +306,7 @@ def list_drive_excel_files(tutor_name="jordanmorrison", year_date=None):
 	try:
 		# Search for the folder by name (case-insensitive)
 		folder_results = service.files().list(
-			q=f"mimeType = 'application/vnd.google-apps.folder' and name = '{tutor_folder}'",
+			q=f"mimeType = 'application/vnd.google-apps.folder' and name = '{tutor_folder_escaped}'",
 			fields="files(id, name)",
 			pageSize=1
 		).execute()
@@ -342,7 +344,7 @@ if selected_tab == "Source Data":
 	st.title("Source Data Dashboard")
 	st.markdown("Google Drive Files")
 	# Tutor selector persisted in session_state (mirrored to selected_tutor for a global canonical key)
-	tutor_options = ["Jordan Morrison", "Barry Lee", "Dave Gatman"]
+	tutor_options = ["Paul Barry","John Casson","Joel Dalloway","Lih Foo","Dave Gatman","Germon (Ruth & Michael)","Ben Holmes","Barry Lee","Ben Lee","Phil Moore","Jordan Morrison","Wayne Mortensen","MusiqHub BoP Ltd","Shaun O'Kane","Jakub Roznawski","Barbora Varnaite","Scott Wotherspoon"]
 	default_tutor = st.session_state.get("tutor_name") or st.session_state.get("selected_tutor") or tutor_options[0]
 	if default_tutor not in tutor_options:
 		tutor_options.insert(0, default_tutor)
