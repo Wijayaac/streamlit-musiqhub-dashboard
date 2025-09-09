@@ -426,6 +426,8 @@ if selected_tab == "Source Data":
 
 elif selected_tab == "Event Profit Summary":
 		st.title("Event Profit Summary Dashboard")
+		# Add GST toggle
+		apply_gst = st.sidebar.checkbox("Apply GST to lesson fees?", value=True, help="Uncheck for tutors not registered for GST (e.g., Shaun O'Kane)")
 
 		# Display the third sheet of the February file
 		if "source_data_df" in st.session_state:
@@ -532,12 +534,15 @@ elif selected_tab == "Event Profit Summary":
 		if "Billed Amount" in df_cleaned.columns:
 			# Ensure the Billed Amount column is numeric and fill NaN with 0
 			df_cleaned["Billed Amount"] = pd.to_numeric(df_cleaned["Billed Amount"], errors="coerce").fillna(0)
-			# Calculate GST based on Billed Amount
-			df_cleaned["GST Component"] = np.where(
-				df_cleaned["Billed Amount"] == 0,
-				0.0,
-				(df_cleaned["Billed Amount"] / 23) * 3
-			)
+			if apply_gst:
+				# Calculate GST based on Billed Amount
+				df_cleaned["GST Component"] = np.where(
+					df_cleaned["Billed Amount"] == 0,
+					0.0,
+					(df_cleaned["Billed Amount"] / 23) * 3
+				)
+			else:
+				df_cleaned["GST Component"] = 0.0
 			df_cleaned["GST Component"] = df_cleaned["GST Component"].round(2)
 
 			# Calculate Room Hire based on Description
