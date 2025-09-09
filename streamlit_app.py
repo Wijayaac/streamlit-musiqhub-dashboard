@@ -16,7 +16,7 @@ from reportlab.lib.pagesizes import A4, landscape as rl_landscape
 from reportlab.lib.styles import getSampleStyleSheet
 from datetime import datetime
 from difflib import get_close_matches
-from room_rate import ROOM_RATES, ALIASES
+from room_rate import ROOM_RATES, ALIASES, ROOM_RATES_BY_TUTOR, normalize_tutor_name
 
 st.set_page_config(page_title="Source Data", layout="wide")
 
@@ -141,8 +141,34 @@ def make_combined_pdf_bytes(tables, title="Report"):
 			('FONTSIZE', (0,0), (-1,-1), 8),
 			('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
 			('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-			('ALIGN', (0,0), (-1,-1), 'LEFT'),
 		])
+
+		# Dynamically set alignment: left for text, right for numbers
+		def is_number(val):
+			try:
+				float(val)
+				return True
+			except Exception:
+				return False
+
+		# Assume first table in tables is representative for column types
+		if tables and len(tables[0]) == 2:
+			_, sample_df = tables[0]
+			for col_idx, col in enumerate(sample_df.columns):
+				# Check the first non-null value in the column
+				non_null = sample_df[col].dropna()
+				align = 'LEFT'
+				if not non_null.empty and all(is_number(v) for v in non_null.head(5)):
+					align = 'RIGHT'
+				table_style.add('ALIGN', (col_idx, 1), (col_idx, -1), align)
+
+		# Add bold style for the last row (totals) in each table
+		for idx, (title, df) in enumerate(tables):
+			if not df.empty:
+				last_row_idx = len(df)
+				# The Table flowable will have header at row 0, so last data row is at index len(df)
+				table_style.add('FONTNAME', (0, last_row_idx), (-1, last_row_idx), 'Helvetica-Bold')
+				table_style.add('TEXTCOLOR', (0, last_row_idx), (-1, last_row_idx), colors.black)
 
 		# Available drawing area
 		left_x = 30
@@ -236,13 +262,13 @@ def normalize_name(name: str) -> str:
 	s = re.sub(r"\s+", " ", s).strip()
 	return s
 
-def get_room_rate(room_name: str, use_fuzzy: bool = True) -> float:
-	"""Return the room rate for a given room name. Uses normalization, known aliases,
-	and a fuzzy fallback using difflib.get_close_matches.
-	"""
+def get_room_rate(room_name: str, tutor_name: str = "", use_fuzzy: bool = True) -> float:
+	"""Return the room rate for a given room name, optionally tutor-specific. Uses normalization, known aliases, and a fuzzy fallback."""
 	norm = normalize_name(room_name)
-	if not norm:
-		return 0.0
+	tutor_norm = normalize_tutor_name(tutor_name) if tutor_name else ""
+	# Check tutor-specific override first
+	if tutor_norm and (norm, tutor_norm) in ROOM_RATES_BY_TUTOR:
+		return ROOM_RATES_BY_TUTOR[(norm, tutor_norm)]
 	# map aliases to canonical
 	if norm in ALIASES:
 		norm = ALIASES[norm]
@@ -431,7 +457,7 @@ elif selected_tab == "Event Profit Summary":
 		except Exception:
 			month_name = selected_month
 
-		st.subheader(f"{month_name} {selected_year} Total Students group by (Room)")
+		st.subheader(f"{month_name} {selected_year} Student Numbers by School")
 		if "Description" in df_cleaned.columns:
 			# Count the number of unique students per room Description using a normalized key
 			df_feb_exploded = df_cleaned.explode("Student Name")
@@ -446,7 +472,9 @@ elif selected_tab == "Event Profit Summary":
 			total_students_per_room.columns = ["Description_norm", "Total Students"]
 			# Friendly display name (title-cased) and room rate lookup
 			total_students_per_room["Description"] = total_students_per_room["Description_norm"].apply(lambda x: x.title() if x else "")
-			total_students_per_room["Room Rate"] = total_students_per_room["Description_norm"].map(get_room_rate)
+			total_students_per_room["Room Rate"] = total_students_per_room.apply(
+				lambda r: get_room_rate(r["Description_norm"], tutor_name), axis=1
+			)
 			# Calculate room hire per student
 			total_students_per_room["Room hire"] = total_students_per_room.apply(
 				lambda r: (r["Room Rate"] / r["Total Students"]) if r["Total Students"] > 0 else 0.0,
@@ -464,16 +492,18 @@ elif selected_tab == "Event Profit Summary":
 			# Total row
 			total_students_per_room['Total Room Hire'] = total_students_per_room["Room hire"] * total_students_per_room["Total Students"]
 
+			# Rename Description to School for display
+			total_students_per_room = total_students_per_room.rename(columns={"Description": "School"})
 
 			# Add a totals row
 			total_students = total_students_per_room["Total Students"].sum()
 			total_room_rate = total_students_per_room["Room Rate"].sum()
 			total_room_hire = total_students_per_room['Total Room Hire'].sum()
-			total_row = pd.DataFrame([["Total", total_room_rate, total_students, 0.0, total_room_hire]], columns=["Description", "Room Rate", "Total Students", "Room hire", "Total Room Hire"])
+			total_row = pd.DataFrame([["Total", total_room_rate, total_students, 0.0, total_room_hire]], columns=["School", "Room Rate", "Total Students", "Room hire", "Total Room Hire"])
 			total_students_per_room = pd.concat([total_students_per_room, total_row], ignore_index=True)
 
 			# Reorder columns to match existing display
-			total_students_per_room = total_students_per_room[["Description", "Room Rate", "Total Students", "Room hire", "Total Room Hire"]]
+			total_students_per_room = total_students_per_room[["School", "Room Rate", "Total Students", "Room hire", "Total Room Hire"]]
 			# Round numeric columns to 2 decimal places for display
 			for col in ["Room Rate", "Room hire", "Total Room Hire"]:
 				if col in total_students_per_room.columns:
@@ -481,21 +511,7 @@ elif selected_tab == "Event Profit Summary":
 
 		 	# Add PDF download and HTML download buttons
 			if not total_students_per_room.empty:
-				# custom_css = """
-				# 	<style>
-				# 		table { width: 100%; border-collapse: collapse; }
-				# 		th, td { text-align: left; padding: 8px; border: 1px solid #ddd; }
-				# 		th { background-color: #f2f2f2; }
-				# 	</style>
-				# 	"""
-				# html_bytes = (custom_css + total_students_per_room.to_html(index=False)).encode()
-				# st.download_button(
-				# 		label="Download as HTML",
-				# 	data=html_bytes,
-				# 	file_name="total_students_per_room.html",
-				# 	mime="text/html"
-				# )
-				pdf_title = f"{month_name} {selected_year} Total Students group by (Room)"
+				pdf_title = f"{month_name} {selected_year} Student Numbers by School"
 				pdf_bytes = dataframe_to_pdf_bytes(total_students_per_room, title=pdf_title)
 				safe_title = re.sub(r"[^0-9A-Za-z._-]", "_", pdf_title).strip("_")
 				download_filename = f"{selected_year}-{selected_month}_{safe_title}.pdf"
@@ -517,7 +533,11 @@ elif selected_tab == "Event Profit Summary":
 			# Ensure the Billed Amount column is numeric and fill NaN with 0
 			df_cleaned["Billed Amount"] = pd.to_numeric(df_cleaned["Billed Amount"], errors="coerce").fillna(0)
 			# Calculate GST based on Billed Amount
-			df_cleaned["GST Component"] = (df_cleaned["Billed Amount"] / 23) * 3
+			df_cleaned["GST Component"] = np.where(
+				df_cleaned["Billed Amount"] == 0,
+				0.0,
+				(df_cleaned["Billed Amount"] / 23) * 3
+			)
 			df_cleaned["GST Component"] = df_cleaned["GST Component"].round(2)
 
 			# Calculate Room Hire based on Description
@@ -535,13 +555,17 @@ elif selected_tab == "Event Profit Summary":
 						return 0.0
 				# Fallback: get_room_rate returns the room rate (total); use it if mapping missing
 				try:
-					return float(get_room_rate(desc))
+					return float(get_room_rate(desc, tutor_name))
 				except Exception:
 					return 0.0
 
 			df_cleaned["Room Hire"] = df_cleaned["Description"].apply(_get_row_room_hire)
 			# Add a new column for Net Lesson Fee excl GST & Room Hire
-			df_cleaned["Net Lesson Fee excl GST & Room Hire"] = df_cleaned["Billed Amount"] - df_cleaned["GST Component"] - df_cleaned["Room Hire"]
+			df_cleaned["Net Lesson Fee excl GST & Room Hire"] = np.where(
+				df_cleaned["Billed Amount"] == 0,
+				0.0,
+				df_cleaned["Billed Amount"] - df_cleaned["GST Component"] - df_cleaned["Room Hire"]
+			)
 			# Round numeric columns to 2 decimal places for display
 			numeric_cols = ["Billed Amount", "GST Component", "Room Hire", "Net Lesson Fee excl GST & Room Hire"]
 			for col in numeric_cols:
@@ -550,6 +574,9 @@ elif selected_tab == "Event Profit Summary":
 
 			# Hide not used columns Duration, Teacher Name, Family, Status, Pre-Tax Billed Amount
 			columns_to_hide = ["Duration", "Teacher Name", "Payroll Amount","Family", "Status", "Pre-Tax Billed Amount"]
+			# Rename Description to School for display
+			if "Description" in df_cleaned.columns:
+				df_cleaned = df_cleaned.rename(columns={"Description": "School"})
 			df_cleaned = df_cleaned.drop(columns=[col for col in columns_to_hide if col in df_cleaned.columns], errors="ignore")
 			st.dataframe(df_cleaned)
 		else:
@@ -557,7 +584,7 @@ elif selected_tab == "Event Profit Summary":
 
 
 		# Based on the df_cleaned DataFrame, show the total fee per tier
-		st.subheader("Fees per Tier")
+		st.subheader("MusiqHub Support Fees by Tier")
 		if "Net Lesson Fee excl GST & Room Hire" in df_cleaned.columns:
 			# Ensure the column is numeric and fill NaN with 0
 			df_cleaned["Net Lesson Fee excl GST & Room Hire"] = pd.to_numeric(df_cleaned["Net Lesson Fee excl GST & Room Hire"], errors="coerce").fillna(0)
@@ -568,7 +595,7 @@ elif selected_tab == "Event Profit Summary":
 			# Exclude rows where "Net Lesson Fee excl GST & Room Hire" is zero (i.e., originally blank)
 			df_tier = df_cleaned[df_cleaned["Net Lesson Fee excl GST & Room Hire"] != 0]
 			tier_summary = df_tier.groupby("Tier").agg(
-				Total_on_Tier = ("Net Lesson Fee excl GST & Room Hire", "count"),
+				Lesson_Count = ("Net Lesson Fee excl GST & Room Hire", "count"),
 				Tier_Fee = ("Tier Fee", "first")
 			).reset_index()
 
@@ -595,15 +622,15 @@ elif selected_tab == "Event Profit Summary":
 						tier_fee = get_fee(sample_fee_by_tier[t])
 					except Exception:
 						tier_fee = 0.0
-					missing_rows.append({"Tier": t, "Total_on_Tier": 0, "Tier_Fee": tier_fee})
+					missing_rows.append({"Tier": t, "Lesson_Count": 0, "Tier_Fee": tier_fee})
 
 			if missing_rows:
 				tier_summary = pd.concat([tier_summary, pd.DataFrame(missing_rows)], ignore_index=True)
 			# Sort by Tier
 			tier_summary = tier_summary.sort_values("Tier").reset_index(drop=True)
-			tier_summary["Total Fee"] = (tier_summary["Total_on_Tier"] * tier_summary["Tier_Fee"]).round(2)
+			tier_summary["Support Fee"] = (tier_summary["Lesson_Count"] * tier_summary["Tier_Fee"]).round(2)
 			# Add a total row
-			total_row = pd.DataFrame([["Total", tier_summary["Total_on_Tier"].sum(), "", (tier_summary["Total Fee"].sum()).round(2)]], columns=["Tier", "Total_on_Tier", "Tier_Fee", "Total Fee"])
+			total_row = pd.DataFrame([["Total", tier_summary["Lesson_Count"].sum(), "", (tier_summary["Support Fee"].sum()).round(2)]], columns=["Tier", "Lesson_Count", "Tier_Fee", "Support Fee"])
 			tier_summary = pd.concat([tier_summary, total_row], ignore_index=True)
 
 		# Add PDF download and HTML download buttons
@@ -638,7 +665,7 @@ elif selected_tab == "Event Profit Summary":
 
 
 
-		st.subheader("Profit group by Room")
+		st.subheader("Revenue Summary by School")
 		# Add a new column called "Profit" to the df_cleaned DataFrame
 		# Ensure columns are numeric and fill NaN with 0
 		for col in ["Billed Amount", "GST Component", "Room Hire"]:
@@ -647,14 +674,16 @@ elif selected_tab == "Event Profit Summary":
 
 		# Convert the above data to a DataFrame and sum the profit per Description
 		# Calculate total profit and total billed amount per room
-		profit_per_room = df_cleaned.groupby("Description").agg({
+		profit_per_room = df_cleaned.groupby("School").agg({
 			"GST Component": "sum",
 			"Profit": "sum",
-			"Billed Amount": "sum"
-		}).reset_index()
+			"Billed Amount": "sum",
+			"Room Hire": "sum",
+			"School": "count"  # This will count the number of lessons per school
+		}).rename(columns={"School": "Lesson_Count"}).reset_index()
 
 		# Round all numeric columns to 2 decimal places
-		numeric_cols = ["GST Component", "Profit", "Billed Amount"]
+		numeric_cols = ["GST Component", "Profit", "Billed Amount", "Room Hire", "Lesson_Count"]
 		for col in numeric_cols:
 			if col in profit_per_room.columns:
 				s = pd.to_numeric(profit_per_room[col], errors="coerce")
@@ -663,18 +692,26 @@ elif selected_tab == "Event Profit Summary":
 				# ensure we have a pandas Series so we can use Series.where and preserve NaNs
 				profit_per_room[col] = pd.Series(floored, index=s.index).where(s.notna(), np.nan)
 
-		# Show the profit per room after deducting GST
-		profit_per_room = profit_per_room.rename(columns={"Profit": "Total Profit (excl GST & Room Hire)", "Billed Amount": "Total Billed Amount"})
+		# Rename columns for display
+		profit_per_room = profit_per_room.rename(columns={
+			"Profit": "Net Income",
+			"Billed Amount": "Lesson Income",
+			"Description": "School",
+			"GST Component": "GST"
+		})
 
-		profit_per_room = profit_per_room[["Description", "Total Billed Amount","GST Component", "Total Profit (excl GST & Room Hire)"]]
+		profit_per_room = profit_per_room[["School","Lesson_Count", "Lesson Income","GST","Room Hire", "Net Income"]]
 		# Add a new row for totals
-		total_profit = (profit_per_room["Total Profit (excl GST & Room Hire)"].sum()).round(2)
-		total_billed = (profit_per_room["Total Billed Amount"].sum()).round(2)
-		total_gst = (profit_per_room["GST Component"].sum()).round(2)
-		total_row = pd.DataFrame([["Total", total_billed, total_gst, total_profit]], columns=["Description", "Total Billed Amount", "GST Component", "Total Profit (excl GST & Room Hire)"])
+		total_lesson_count = (profit_per_room["Lesson_Count"].sum()).round(2)
+		total_billed = (profit_per_room["Lesson Income"].sum()).round(2)
+		total_gst = (profit_per_room["GST"].sum()).round(2)
+		total_room_hire = (profit_per_room["Room Hire"].sum()).round(2)
+		total_profit = (profit_per_room["Net Income"].sum()).round(2)
+		total_row = pd.DataFrame([["Total", total_lesson_count, total_billed, total_gst, total_room_hire, total_profit]],
+			columns=["School", "Lesson_Count", "Lesson Income", "GST", "Room Hire", "Net Income"])
 		profit_per_room = pd.concat([profit_per_room, total_row], ignore_index=True)
 
-		pdf_title = f"{month_name} {selected_year} Profit group by Room"
+		pdf_title = f"{month_name} {selected_year} Profit group by School"
 		pdf_bytes = dataframe_to_pdf_bytes(total_students_per_room, title=pdf_title)
 		safe_title = re.sub(r"[^0-9A-Za-z._-]", "_", pdf_title).strip("_")
 		download_filename = f"{selected_year}-{selected_month}_{safe_title}.pdf"
@@ -691,10 +728,12 @@ elif selected_tab == "Event Profit Summary":
 		# add a download button for all the table above
 		if (not tier_summary.empty) and (not profit_per_room.empty) and (not total_students_per_room.empty):
 			# Create a combined PDF with all three tables
+			# Remove "Total Room Hire" column from total_students_per_room for the combined report
+			students_table = total_students_per_room.drop(columns=["Total Room Hire"], errors="ignore")
 			tables = [
-				("Total Students group by Room", total_students_per_room),
-				("Fees per Tier", tier_summary),
-				("Profit group by Room", profit_per_room)
+				("Students Numbers by School", students_table),
+				("MusiqHub Supports Fees by Tier", tier_summary),
+				("Review Summary by School", profit_per_room)
 			]
 			safe_title = f"{tutor_name}_{selected_year}-{selected_month}_Combined_Report"
 			combined_pdf_bytes = make_combined_pdf_bytes(tables, safe_title)

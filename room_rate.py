@@ -14,7 +14,7 @@ ROOM_RATES = {
 	"mellons bay school": 0.00,
 	"ormiston primary school": 0.00,
 	"stanhope road school": 0.00,
-	"sunnyhills school": 17.39,
+	"sunnyhills school": 20,
 	"the gardens school": 0.00,
 	"cockle bay school": 0.00,
 	"point view school": 34.50,
@@ -207,5 +207,20 @@ ALIASES = {
 	"matua": "matua school",
 	"pillans point": "pillans point school",
 	"suzanne aubert": "suzanne aubert catholic school",
+}
+
+def normalize_tutor_name(name: str) -> str:
+    if not name or name is None:
+        return ""
+    s = str(name).strip().lower()
+    s = s.replace(" ", "")
+    return s
+
+# Tutor-specific room rates: (room, tutor) -> rate
+# Both keys are normalized (room: as before, tutor: lowercase, no spaces)
+ROOM_RATES_BY_TUTOR = {
+    ("sunnyhills", "barrylee"): 40.0,
+    ("sunnyhills", "jordanmorrison"): 40.0,
+    ("sunnyhills school", "shaunokane"): 20.0,
 }
 # --- END AUTO-GENERATED ---
