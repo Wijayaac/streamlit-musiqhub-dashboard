@@ -178,6 +178,7 @@ from collections import defaultdict
 ROOM_RATES_BY_TUTOR = {}
 ROOM_RATES = {}
 lowest_rate_per_school = {}
+zero_rate_schools = set()
 
 reader = csv.reader(room_rate_raw)
 header = next(reader)
@@ -189,14 +190,21 @@ for row in reader:
     rate_val = float(rate.replace("$", "").replace(",", ""))
     # Tutor-specific
     ROOM_RATES_BY_TUTOR[(school_norm, tutor_norm)] = rate_val
-    # For ROOM_RATES, keep the lowest nonzero rate for each school (or 0 if all are 0)
+    # Track if any tutor for this school has a $0 rate
+    if rate_val == 0:
+        zero_rate_schools.add(school_norm)
+    # For ROOM_RATES, keep the lowest nonzero rate for each school
     if school_norm not in lowest_rate_per_school:
         lowest_rate_per_school[school_norm] = rate_val
     else:
-        # Prefer nonzero, but if all are zero, keep zero
         if rate_val != 0 and (lowest_rate_per_school[school_norm] == 0 or rate_val < lowest_rate_per_school[school_norm]):
             lowest_rate_per_school[school_norm] = rate_val
-ROOM_RATES = dict(lowest_rate_per_school)
+# If any tutor for a school has a $0 rate, set ROOM_RATES[school] = 0
+for school_norm in lowest_rate_per_school:
+    if school_norm in zero_rate_schools:
+        ROOM_RATES[school_norm] = 0.0
+    else:
+        ROOM_RATES[school_norm] = lowest_rate_per_school[school_norm]
 
 def get_room_rate(school, tutor=None):
     """
