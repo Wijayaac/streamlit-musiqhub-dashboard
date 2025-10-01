@@ -370,7 +370,7 @@ if selected_tab == "Source Data":
 	st.title("Source Data Dashboard")
 	st.markdown("Google Drive Files")
 	# Tutor selector persisted in session_state (mirrored to selected_tutor for a global canonical key)
-	tutor_options = ["Paul Barry","John Casson","Joel Dalloway","Lih Foo","Dave Gatman","Germon (Ruth & Michael)","Ben Holmes","Barry Lee","Ben Lee","Phil Moore","Jordan Morrison","Wayne Mortensen","MusiqHub BoP Ltd","Shaun O'Kane","Jakub Roznawski","Barbora Varnaite","Scott Wotherspoon"]
+	tutor_options = ["Paul Barry","John Casson","Joel Dalloway","Lih Foo","Dave Gatman","Germon (Ruth & Michael)","Ben Holmes","Barry Lee","Ben Lee","Phil Moore","Jordan Morrison","Wayne Mortensen","MusiqHub BoP Ltd","Shaun O'Kane","Jakub Roznawski","Barbora Varnaite","Scott Wotherspoon", "Augustus Mackenzie"]
 	default_tutor = st.session_state.get("tutor_name") or st.session_state.get("selected_tutor") or tutor_options[0]
 	if default_tutor not in tutor_options:
 		tutor_options.insert(0, default_tutor)
