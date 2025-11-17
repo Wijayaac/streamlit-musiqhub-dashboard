@@ -1,21 +1,23 @@
-# --- AUTO-GENERATED ROOM RATES (from room_rate.md, deduplicated, with tutor-specific rates) ---
+import pandas as pd
 import re
 
 def normalize_name(name: str) -> str:
-    if not name or name is None:
+    if not name or pd.isna(name):
         return ""
     s = str(name).strip().lower()
-    s = re.sub(r"[’'`\(\)\[\]\{\},.]", "", s)
+    s = re.sub(r"[’'`]", "", s)
     s = re.sub(r"[^0-9a-z\s]", " ", s)
     s = re.sub(r"\s+", " ", s).strip()
     return s
 
 def normalize_tutor_name(name: str) -> str:
-    if not name or name is None:
+    if not name or pd.isna(name):
         return ""
-    s = str(name).strip().lower()
-    s = s.replace(" ", "")
-    return s
+    return str(name).strip().lower().replace(" ", "")
+
+# Usage example:
+# file_id = "1m2wgs_voZy4IaRs6BmmiPXZGm7-PyaA817fRdUTGujQ"  # Your spreadsheet file ID
+# ROOM_RATES, ROOM_RATES_BY_TUTOR, ALIASES = load_room_rates_from_gdrive(file_id)
 
 # Data from room_rate.md
 room_rate_raw = '''franchisee name, school name,room rate per week
@@ -282,7 +284,7 @@ ALIASES = {
 	"nukumea primary school": "nukumea primary school",
 	"torbay school": "torbay school",
 	"farmcove": "farmcove intermediate",
-	"sunnyhills": "sunnyhills school",
+	"sunnyhills school": "sunnyhills school",
 	"st heliers": "st heliers school",
 	"macleans prim": "macleans primary school",
 	"waikowhai": "waikowhai intermediate",

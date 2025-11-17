@@ -271,7 +271,10 @@ def get_room_rate(room_name: str, tutor_name: str = "", use_fuzzy: bool = True) 
 		return ROOM_RATES_BY_TUTOR[(norm, tutor_norm)]
 	# map aliases to canonical
 	if norm in ALIASES:
-		norm = ALIASES[norm]
+		norm = normalize_name(ALIASES[norm])
+		# Re-check tutor-specific after alias mapping
+		if tutor_norm and (norm, tutor_norm) in ROOM_RATES_BY_TUTOR:
+			return ROOM_RATES_BY_TUTOR[(norm, tutor_norm)]
 	# direct lookup
 	if norm in ROOM_RATES:
 		return ROOM_RATES[norm]
@@ -365,6 +368,45 @@ def list_drive_excel_files(tutor_name="jordanmorrison", year_date=None):
 	except Exception as e:
 		st.error(f"Error searching Drive for '{target_filename}' in folder '{tutor_folder}': {e}")
 		return []
+def load_room_rates_from_gdrive(file_id, sheet_name="Sheet1"):
+    service = get_drive_service()
+    request = service.files().export_media(fileId=file_id, mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    fh = io.BytesIO()
+    downloader = MediaIoBaseDownload(fh, request)
+    done = False
+    while not done:
+        status, done = downloader.next_chunk()
+    fh.seek(0)
+    df = pd.read_excel(fh, sheet_name=sheet_name)
+    # Only keep needed columns
+    df = df[["Franchisee Name", "School Name", "School Abbreviation", "Room Rate per Week"]]
+    ROOM_RATES_BY_TUTOR = {}
+    ROOM_RATES = {}
+    ALIASES = {}
+    for _, row in df.iterrows():
+        tutor = row["Franchisee Name"]
+        school = row["School Name"]
+        abbrev = row["School Abbreviation"]
+        rate = row["Room Rate per Week"]
+        try:
+            rate_val = float(str(rate).replace("$", "").replace(",", ""))
+        except Exception:
+            rate_val = 0.0
+        tutor_norm = normalize_tutor_name(tutor)
+        school_norm = normalize_name(school)
+        ROOM_RATES_BY_TUTOR[(school_norm, tutor_norm)] = rate_val
+        if not tutor_norm:
+            ROOM_RATES[school_norm] = rate_val
+        if abbrev:
+            abbrev_norm = normalize_name(abbrev)
+            ALIASES[abbrev_norm] = school_norm
+        if school_norm not in ROOM_RATES:
+            ROOM_RATES[school_norm] = rate_val
+    return ROOM_RATES, ROOM_RATES_BY_TUTOR, ALIASES
+
+ROOM_RATES, ROOM_RATES_BY_TUTOR, ALIASES = load_room_rates_from_gdrive(
+    "1m2wgs_voZy4IaRs6BmmiPXZGm7-PyaA817fRdUTGujQ", "Sheet1"
+)
 
 if selected_tab == "Source Data":
 	st.title("Source Data Dashboard")
