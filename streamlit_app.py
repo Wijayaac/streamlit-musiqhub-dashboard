@@ -124,7 +124,7 @@ def dataframe_to_pdf_bytes(df, title="Data"):
 		buffer.seek(0)
 		return buffer.read()
 
-def make_combined_pdf_bytes(tables, title="Report"):
+def make_combined_pdf_bytes(tables, title="Report", orientation='portrait'):
 		"""Create a single multi-page PDF containing each (title, DataFrame) in tables.
 		tables: list of (title:str, df:pd.DataFrame)
 		Returns: bytes of PDF
@@ -132,7 +132,8 @@ def make_combined_pdf_bytes(tables, title="Report"):
 		buf = io.BytesIO()
 		# Use landscape A4 (rl_landscape already imported)
 		# Do not instantiate a Canvas here; SimpleDocTemplate will create one via canvasmaker.
-		width, height = A4
+		page_size = rl_landscape(A4) if orientation == 'landscape' else A4
+		width, height = page_size
 
 		# Styling for ReportLab tables
 		table_style = TableStyle([
@@ -177,7 +178,7 @@ def make_combined_pdf_bytes(tables, title="Report"):
 
 		# Combine all tables into a single flowable story (no manual pagination).
 		# Use ReportLab platypus to let it flow/split tables across pages automatically.
-		doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=left_x, rightMargin=right_margin, topMargin=40, bottomMargin=40)
+		doc = SimpleDocTemplate(buf, pagesize=page_size, leftMargin=left_x, rightMargin=right_margin, topMargin=40, bottomMargin=40)
 		styles = getSampleStyleSheet()
 		story = []
 
@@ -619,12 +620,24 @@ elif selected_tab == "Event Profit Summary":
 				if col in df_cleaned.columns:
 					df_cleaned[col] = pd.to_numeric(df_cleaned[col], errors="coerce").round(2)
 
-			# Hide not used columns Duration, Teacher Name, Family, Status, Pre-Tax Billed Amount
-			columns_to_hide = ["Duration", "Teacher Name", "Payroll Amount","Family", "Status", "Pre-Tax Billed Amount"]
+			# Hide not used columns Duration, Teacher Name, Family, Pre-Tax Billed Amount
+			columns_to_hide = ["Duration", "Teacher Name", "Payroll Amount","Family", "Pre-Tax Billed Amount"]
 			# Rename Description to School for display
 			if "Description" in df_cleaned.columns:
 				df_cleaned = df_cleaned.rename(columns={"Description": "School"})
 			df_cleaned = df_cleaned.drop(columns=[col for col in columns_to_hide if col in df_cleaned.columns], errors="ignore")
+
+
+			pdf_title = f"{month_name} {selected_year} Data including room hire GST"
+			pdf_bytes = make_combined_pdf_bytes([(pdf_title, df_cleaned)], title=pdf_title, orientation='landscape')
+			safe_title = re.sub(r"[^0-9A-Za-z._-]", "_", pdf_title).strip("_")
+			download_filename = f"{selected_year}-{selected_month}_{safe_title}.pdf"
+			st.download_button(
+					label="Download as PDF",
+					data=pdf_bytes,
+					file_name=download_filename,
+					mime="application/pdf"
+			)
 			st.dataframe(df_cleaned)
 		else:
 			st.error("Billed Amount column not found in the cleaned DataFrame. Please check the source data.")
