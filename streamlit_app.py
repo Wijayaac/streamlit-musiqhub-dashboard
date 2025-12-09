@@ -18,10 +18,6 @@ from datetime import datetime
 from difflib import get_close_matches
 from room_rate import ROOM_RATES, ALIASES, ROOM_RATES_BY_TUTOR, normalize_tutor_name
 
-st.set_page_config(page_title="Source Data", layout="wide")
-
-selected_tab = st.sidebar.radio("Select Page", ["Source Data","Event Profit Summary"])
-
 # Keep a global month/year in session state and sync from any widgets that use those labels/keys.
 
 if "month" not in st.session_state:
@@ -405,9 +401,35 @@ def load_room_rates_from_gdrive(file_id, sheet_name="Sheet1"):
             ROOM_RATES[school_norm] = rate_val
     return ROOM_RATES, ROOM_RATES_BY_TUTOR, ALIASES
 
-ROOM_RATES, ROOM_RATES_BY_TUTOR, ALIASES = load_room_rates_from_gdrive(
-    "1m2wgs_voZy4IaRs6BmmiPXZGm7-PyaA817fRdUTGujQ", "Sheet1"
-)
+# After loading room rates
+try:
+    ROOM_RATES, ROOM_RATES_BY_TUTOR, ALIASES = load_room_rates_from_gdrive(
+        "1m2wgs_voZy4IaRs6BmmiPXZGm7-PyaA817fRdUTGujQ", "Sheet1"
+    )
+    st.session_state["room_rates_loaded"] = True
+except Exception as e:
+    st.session_state["room_rates_loaded"] = False
+    st.error(f"Failed to load room rates: {e}")
+
+# Strict loading check BEFORE any widgets
+if not st.session_state.get("room_rates_loaded", False):
+    st.warning("Room rates are still loading. Please wait...")
+    st.spinner("Loading Google Sheet data...")
+    if st.button("Retry loading room rates"):
+        try:
+            ROOM_RATES, ROOM_RATES_BY_TUTOR, ALIASES = load_room_rates_from_gdrive(
+                "1m2wgs_voZy4IaRs6BmmiPXZGm7-PyaA817fRdUTGujQ", "Sheet1"
+            )
+            st.session_state["room_rates_loaded"] = True
+            st.rerun()
+        except Exception as e:
+            st.session_state["room_rates_loaded"] = False
+            st.error(f"Failed to load room rates: {e}")
+    st.stop()
+
+# Only runs if data is loaded!
+selected_tab = st.sidebar.radio("Select Page", ["Source Data", "Event Profit Summary"])
+st.set_page_config(page_title="Source Data", layout="wide")
 
 if selected_tab == "Source Data":
 	st.title("Source Data Dashboard")
@@ -491,6 +513,7 @@ elif selected_tab == "Event Profit Summary":
 					df_cleaned = st.session_state["df_cleaned"]
 		else:
 				st.info("Please select and load a file from the Source Data tab first.")
+				st.stop()
 
 		# Based on the df_student_per_room DataFrame, calculate how much is student for each room Description, Total students
 		tutor_name = st.session_state.get("selected_tutor") or st.session_state.get("tutor_name") or "Morrison"
