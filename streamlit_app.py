@@ -649,18 +649,6 @@ elif selected_tab == "Event Profit Summary":
 			if "Description" in df_cleaned.columns:
 				df_cleaned = df_cleaned.rename(columns={"Description": "School"})
 			df_cleaned = df_cleaned.drop(columns=[col for col in columns_to_hide if col in df_cleaned.columns], errors="ignore")
-
-
-			pdf_title = f"{month_name} {selected_year} Data including room hire GST"
-			pdf_bytes = make_combined_pdf_bytes([(pdf_title, df_cleaned)], title=pdf_title, orientation='landscape')
-			safe_title = re.sub(r"[^0-9A-Za-z._-]", "_", pdf_title).strip("_")
-			download_filename = f"{selected_year}-{selected_month}_{safe_title}.pdf"
-			st.download_button(
-					label="Download as PDF",
-					data=pdf_bytes,
-					file_name=download_filename,
-					mime="application/pdf"
-			)
 			st.dataframe(df_cleaned)
 		else:
 			st.error("Billed Amount column not found in the cleaned DataFrame. Please check the source data.")
