@@ -401,12 +401,14 @@ def load_room_rates_from_gdrive(file_id, sheet_name="Sheet1"):
             ROOM_RATES[school_norm] = rate_val
     return ROOM_RATES, ROOM_RATES_BY_TUTOR, ALIASES
 
-# After loading room rates
-# After loading room rates
-try:
-    ROOM_RATES, ROOM_RATES_BY_TUTOR, ALIASES = load_room_rates_from_gdrive(
+def cached_room_rates():
+    return load_room_rates_from_gdrive(
         "1m2wgs_voZy4IaRs6BmmiPXZGm7-PyaA817fRdUTGujQ", "Sheet1"
     )
+
+# After loading room rates
+try:
+    ROOM_RATES, ROOM_RATES_BY_TUTOR, ALIASES = cached_room_rates()
     st.session_state["room_rates_loaded"] = True
     st.session_state["last_room_rates"] = (ROOM_RATES, ROOM_RATES_BY_TUTOR, ALIASES)
 except Exception as e:
@@ -419,22 +421,6 @@ except Exception as e:
         st.session_state["room_rates_loaded"] = True
     else:
         st.warning("No room rate data available. Please retry.")
-
-# Strict loading check BEFORE any widgets
-# if not st.session_state.get("room_rates_loaded", False):
-#     st.warning("Room rates are still loading. Please wait...")
-#     st.spinner("Loading Google Sheet data...")
-#     if st.button("Retry loading room rates"):
-#         try:
-#             ROOM_RATES, ROOM_RATES_BY_TUTOR, ALIASES = load_room_rates_from_gdrive(
-#                 "1m2wgs_voZy4IaRs6BmmiPXZGm7-PyaA817fRdUTGujQ", "Sheet1"
-#             )
-#             st.session_state["room_rates_loaded"] = True
-#             st.rerun()
-#         except Exception as e:
-#             st.session_state["room_rates_loaded"] = False
-#             st.error(f"Failed to load room rates: {e}")
-#     st.stop()
 
 # Only runs if data is loaded!
 selected_tab = st.sidebar.radio("Select Page", ["Source Data", "Event Profit Summary"])
