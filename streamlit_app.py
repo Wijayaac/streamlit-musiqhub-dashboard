@@ -402,30 +402,39 @@ def load_room_rates_from_gdrive(file_id, sheet_name="Sheet1"):
     return ROOM_RATES, ROOM_RATES_BY_TUTOR, ALIASES
 
 # After loading room rates
+# After loading room rates
 try:
     ROOM_RATES, ROOM_RATES_BY_TUTOR, ALIASES = load_room_rates_from_gdrive(
         "1m2wgs_voZy4IaRs6BmmiPXZGm7-PyaA817fRdUTGujQ", "Sheet1"
     )
     st.session_state["room_rates_loaded"] = True
+    st.session_state["last_room_rates"] = (ROOM_RATES, ROOM_RATES_BY_TUTOR, ALIASES)
 except Exception as e:
     st.session_state["room_rates_loaded"] = False
     st.error(f"Failed to load room rates: {e}")
+    # Fallback to last known good data
+    if "last_room_rates" in st.session_state:
+        ROOM_RATES, ROOM_RATES_BY_TUTOR, ALIASES = st.session_state["last_room_rates"]
+        st.warning("Using last known room rates. Data may be outdated.")
+        st.session_state["room_rates_loaded"] = True
+    else:
+        st.warning("No room rate data available. Please retry.")
 
 # Strict loading check BEFORE any widgets
-if not st.session_state.get("room_rates_loaded", False):
-    st.warning("Room rates are still loading. Please wait...")
-    st.spinner("Loading Google Sheet data...")
-    if st.button("Retry loading room rates"):
-        try:
-            ROOM_RATES, ROOM_RATES_BY_TUTOR, ALIASES = load_room_rates_from_gdrive(
-                "1m2wgs_voZy4IaRs6BmmiPXZGm7-PyaA817fRdUTGujQ", "Sheet1"
-            )
-            st.session_state["room_rates_loaded"] = True
-            st.rerun()
-        except Exception as e:
-            st.session_state["room_rates_loaded"] = False
-            st.error(f"Failed to load room rates: {e}")
-    st.stop()
+# if not st.session_state.get("room_rates_loaded", False):
+#     st.warning("Room rates are still loading. Please wait...")
+#     st.spinner("Loading Google Sheet data...")
+#     if st.button("Retry loading room rates"):
+#         try:
+#             ROOM_RATES, ROOM_RATES_BY_TUTOR, ALIASES = load_room_rates_from_gdrive(
+#                 "1m2wgs_voZy4IaRs6BmmiPXZGm7-PyaA817fRdUTGujQ", "Sheet1"
+#             )
+#             st.session_state["room_rates_loaded"] = True
+#             st.rerun()
+#         except Exception as e:
+#             st.session_state["room_rates_loaded"] = False
+#             st.error(f"Failed to load room rates: {e}")
+#     st.stop()
 
 # Only runs if data is loaded!
 selected_tab = st.sidebar.radio("Select Page", ["Source Data", "Event Profit Summary"])
@@ -513,7 +522,7 @@ elif selected_tab == "Event Profit Summary":
 					df_cleaned = st.session_state["df_cleaned"]
 		else:
 				st.info("Please select and load a file from the Source Data tab first.")
-				st.stop()
+				# st.stop()
 
 		# Based on the df_student_per_room DataFrame, calculate how much is student for each room Description, Total students
 		tutor_name = st.session_state.get("selected_tutor") or st.session_state.get("tutor_name") or "Morrison"
