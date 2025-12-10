@@ -522,7 +522,7 @@ elif selected_tab == "Event Profit Summary":
 					df_cleaned = st.session_state["df_cleaned"]
 		else:
 				st.info("Please select and load a file from the Source Data tab first.")
-				# st.stop()
+				st.stop()
 
 		# Based on the df_student_per_room DataFrame, calculate how much is student for each room Description, Total students
 		tutor_name = st.session_state.get("selected_tutor") or st.session_state.get("tutor_name") or "Morrison"
